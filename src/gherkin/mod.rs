@@ -1,5 +1,5 @@
 mod compile;
 mod model;
 
-pub use compile::{CompileError, compile_feature, compile_str};
+pub use compile::{compile_str, CompileError};
 pub use model::{CompiledFeature, CompiledScenario, CompiledStep};

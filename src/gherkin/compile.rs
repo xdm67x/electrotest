@@ -8,10 +8,10 @@ pub enum CompileError {
 
 pub fn compile_str(input: &str) -> Result<CompiledFeature, CompileError> {
     let parsed = ::gherkin::Feature::parse(input, ::gherkin::GherkinEnv::default())?;
-    compile_feature(parsed)
+    Ok(compile_feature(parsed))
 }
 
-pub fn compile_feature(feature: ::gherkin::Feature) -> Result<CompiledFeature, CompileError> {
+fn compile_feature(feature: ::gherkin::Feature) -> CompiledFeature {
     let feature_name = feature.name;
     let scenarios = feature
         .scenarios
@@ -29,5 +29,5 @@ pub fn compile_feature(feature: ::gherkin::Feature) -> Result<CompiledFeature, C
         })
         .collect();
 
-    Ok(CompiledFeature { scenarios })
+    CompiledFeature { scenarios }
 }
