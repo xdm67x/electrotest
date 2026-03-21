@@ -19,6 +19,25 @@ fn parses_launch_mode_config() {
 }
 
 #[test]
+fn rejects_launch_mode_without_command() {
+    let raw = r#"
+        [app]
+        mode = "launch"
+
+        [paths]
+        features = ["features"]
+        steps = ["steps"]
+        artifacts = ".electrotest/artifacts"
+    "#;
+
+    let error = electrotest::config::from_str(raw).unwrap_err();
+    assert!(matches!(
+        error,
+        electrotest::Error::Config(electrotest::config::ConfigError::MissingLaunchCommand)
+    ));
+}
+
+#[test]
 fn parses_attach_mode_with_endpoint_file() {
     let raw = r#"
         [app]
