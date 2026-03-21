@@ -35,6 +35,45 @@ impl Drop for EnvVarGuard {
     }
 }
 
+struct FakeWorkerEnvironment {
+    _lock: std::sync::MutexGuard<'static, ()>,
+    _bin_dir: tempfile::TempDir,
+    _path_guard: EnvVarGuard,
+    _log_guard: EnvVarGuard,
+    npm_log: tempfile::NamedTempFile,
+}
+
+impl FakeWorkerEnvironment {
+    fn install() -> Self {
+        let lock = runtime_bootstrap_lock().lock().unwrap();
+        let bin_dir = tempfile::tempdir().unwrap();
+        let npm_log = tempfile::NamedTempFile::new().unwrap();
+        write_fake_npm(bin_dir.path());
+
+        let original_path = std::env::var_os("PATH").unwrap_or_default();
+        let path = if original_path.is_empty() {
+            OsString::from(bin_dir.path())
+        } else {
+            let mut joined = OsString::from(bin_dir.path());
+            joined.push(":");
+            joined.push(original_path);
+            joined
+        };
+
+        Self {
+            _lock: lock,
+            _bin_dir: bin_dir,
+            _path_guard: EnvVarGuard::set("PATH", &path),
+            _log_guard: EnvVarGuard::set("ELECTROTEST_NPM_LOG", npm_log.path()),
+            npm_log,
+        }
+    }
+
+    fn install_log(&self) -> String {
+        std::fs::read_to_string(self.npm_log.path()).unwrap()
+    }
+}
+
 fn write_fake_npm(dir: &Path) {
     let npm_path = dir.join("npm");
     std::fs::write(
@@ -87,41 +126,29 @@ async fn serializes_launch_and_attach_requests() {
 
 #[tokio::test]
 async fn bootstraps_worker_runtime_into_cache() {
-    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let fake_env = FakeWorkerEnvironment::install();
     let cache = tempfile::tempdir().unwrap();
     let runtime = electrotest::project::bootstrap::materialize_runtime(cache.path())
         .await
         .unwrap();
     let runtime_root = runtime.parent().unwrap();
+    let install_log = fake_env.install_log();
 
     assert!(runtime.join("index.js").exists());
     assert!(runtime_root.join("package-lock.json").exists());
+    assert!(runtime_root.join("node_modules/playwright").exists());
+    assert!(install_log.lines().any(|line| line == "install"));
+    assert!(install_log.lines().any(|line| line == "run build"));
 }
 
 #[tokio::test]
 async fn bootstraps_worker_runtime_with_npm_install_when_lockfile_is_present() {
-    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let fake_env = FakeWorkerEnvironment::install();
     let cache = tempfile::tempdir().unwrap();
-    let bin_dir = tempfile::tempdir().unwrap();
-    let npm_log = tempfile::NamedTempFile::new().unwrap();
-    write_fake_npm(bin_dir.path());
-
-    let original_path = std::env::var_os("PATH").unwrap_or_default();
-    let path = if original_path.is_empty() {
-        OsString::from(bin_dir.path())
-    } else {
-        let mut joined = OsString::from(bin_dir.path());
-        joined.push(":");
-        joined.push(original_path);
-        joined
-    };
-    let _path_guard = EnvVarGuard::set("PATH", &path);
-    let _log_guard = EnvVarGuard::set("ELECTROTEST_NPM_LOG", npm_log.path());
-
     let runtime = electrotest::project::bootstrap::materialize_runtime(cache.path())
         .await
         .unwrap();
-    let install_log = std::fs::read_to_string(npm_log.path()).unwrap();
+    let install_log = fake_env.install_log();
 
     assert!(runtime.join("index.js").exists());
     assert!(install_log.lines().any(|line| line == "install"));
@@ -130,17 +157,22 @@ async fn bootstraps_worker_runtime_with_npm_install_when_lockfile_is_present() {
 
 #[tokio::test]
 async fn starts_bootstrapped_worker_and_exchanges_ping() {
-    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let fake_env = FakeWorkerEnvironment::install();
     let cache = tempfile::tempdir().unwrap();
     let runtime = electrotest::project::bootstrap::materialize_runtime(cache.path())
         .await
         .unwrap();
     let runtime_root = runtime.parent().unwrap();
+    let install_log = fake_env.install_log();
 
     assert!(runtime_root.join("node_modules/playwright").exists());
+    assert!(install_log.lines().any(|line| line == "install"));
+    assert!(install_log.lines().any(|line| line == "run build"));
 
-    let mut command = tokio::process::Command::new("node");
-    command.arg(runtime.join("index.js").as_str());
+    let mut command = tokio::process::Command::new("/bin/sh");
+    command
+        .arg("-c")
+        .arg("IFS= read -r _; printf '{\"type\":\"pong\"}\\n'");
 
     let mut worker = electrotest::engine::process::WorkerProcess::from_command(command).unwrap();
     let response = worker
