@@ -1,4 +1,4 @@
-pub async fn run() -> Result<(), crate::Error> {
+pub async fn run(_args: crate::cli::TestArgs) -> Result<(), crate::Error> {
     let request = crate::runner::RunRequest::load_default().await?;
     let summary = crate::runner::execute(request).await?;
 

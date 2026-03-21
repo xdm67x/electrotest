@@ -1,3 +1,22 @@
+use assert_cmd::Command;
+
+#[test]
+fn list_prints_feature_and_scenario_names() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(
+        temp.path().join("sample.feature"),
+        "Feature: Settings\n  Scenario: Open preferences\n    Given the Electron app is launched\n",
+    )
+    .unwrap();
+
+    Command::cargo_bin("electrotest")
+        .unwrap()
+        .args(["list", "--features", temp.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("Open preferences"));
+}
+
 #[test]
 fn compiles_feature_into_executable_scenario() {
     let feature = r#"
