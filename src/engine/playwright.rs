@@ -4,6 +4,12 @@ pub struct PlaywrightEngine {
     worker: crate::engine::process::WorkerProcess,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CustomStepFeatureResult {
+    pub scenarios_passed: usize,
+    pub stdout: String,
+}
+
 impl PlaywrightEngine {
     pub fn new(worker: crate::engine::process::WorkerProcess) -> Self {
         Self { worker }
@@ -55,6 +61,44 @@ impl PlaywrightEngine {
         }
 
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+    }
+
+    pub async fn run_custom_step_feature(
+        feature_path: &Path,
+        step_paths: &[PathBuf],
+        app_title: &str,
+    ) -> Result<CustomStepFeatureResult, crate::Error> {
+        let feature = std::fs::read_to_string(feature_path)?;
+        let compiled = crate::gherkin::compile_str(&feature)?;
+        let patterns = Self::load_custom_step_patterns(step_paths).await?;
+        let registry = crate::steps::Registry::with_custom_patterns(patterns);
+
+        let mut outputs = Vec::new();
+        let mut scenarios_passed = 0;
+
+        for scenario in compiled.scenarios {
+            for step in scenario.steps {
+                let resolved = registry.resolve(&step.text).ok_or_else(|| {
+                    std::io::Error::other(format!("no step matched: {}", step.text))
+                })?;
+
+                if resolved.action_name() == "custom" {
+                    let output = Self::execute_custom_step(step_paths, &step.text, app_title).await?;
+                    if !output.is_empty() {
+                        outputs.push(output);
+                    }
+                }
+            }
+
+            scenarios_passed += 1;
+        }
+
+        outputs.push(format!("{scenarios_passed} scenario passed"));
+
+        Ok(CustomStepFeatureResult {
+            scenarios_passed,
+            stdout: outputs.join("\n"),
+        })
     }
 }
 

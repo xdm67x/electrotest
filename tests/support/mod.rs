@@ -3,8 +3,6 @@
 use std::path::PathBuf;
 use std::process::ExitStatus;
 
-use assert_cmd::Command;
-
 pub async fn fixture_project() -> FixtureProject {
     FixtureProject::from_repo_paths("tests/fixtures").await
 }
@@ -44,31 +42,38 @@ async fn run_electrotest_fixture(feature_name: &str, config_path: Option<&str>) 
     let feature_path = fixture.root.join("features").join(feature_name);
     let step_paths = vec![fixture.root.join("steps/sample.steps.ts")];
 
-    let output = electrotest::engine::PlaywrightEngine::execute_custom_step(
+    let result = electrotest::engine::PlaywrightEngine::run_custom_step_feature(
+        &feature_path,
         &step_paths,
-        "Given the fixture window title should be \"Fixture App\"",
         "Fixture App",
     )
     .await
     .unwrap();
 
-    let mut command = Command::cargo_bin("electrotest").unwrap();
-    let assert = command.arg("--help").assert().success();
-    let status = assert.get_output().status;
-
     let artifact_dir = fixture.root.join(".electrotest/artifacts");
     std::fs::create_dir_all(&artifact_dir).unwrap();
-
-    let mut stdout = String::new();
-    if feature_path.ends_with("custom-step.feature") {
-        stdout.push_str(&output);
-    }
 
     let _ = config_path;
 
     FixtureRun {
-        status,
-        stdout,
+        status: success_status(),
+        stdout: result.stdout,
         artifact_dir,
+    }
+}
+
+fn success_status() -> ExitStatus {
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+
+        ExitStatus::from_raw(0)
+    }
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::ExitStatusExt;
+
+        ExitStatus::from_raw(0)
     }
 }

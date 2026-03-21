@@ -297,3 +297,47 @@ async fn executes_custom_typescript_step_handler() {
 
     assert!(output.contains("custom step executed"));
 }
+
+#[tokio::test]
+async fn executes_custom_feature_file_through_product_path() {
+    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let fixture_root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures");
+    let feature_path = fixture_root.join("features/custom-step.feature");
+    let step_paths = vec![fixture_root.join("steps/sample.steps.ts")];
+
+    let result = electrotest::engine::PlaywrightEngine::run_custom_step_feature(
+        &feature_path,
+        &step_paths,
+        "Fixture App",
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.scenarios_passed, 1);
+    assert!(result.stdout.contains("custom step executed"));
+}
+
+#[tokio::test]
+async fn executes_custom_javascript_step_module() {
+    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let feature_path = temp.path().join("custom-js-step.feature");
+    std::fs::write(
+        &feature_path,
+        "Feature: Custom JS step\n\n  Scenario: Run JS step\n    Given the fixture js step should run\n",
+    )
+    .unwrap();
+    let step_paths = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/steps/sample.steps.js")];
+
+    let result = electrotest::engine::PlaywrightEngine::run_custom_step_feature(
+        &feature_path,
+        &step_paths,
+        "Fixture App",
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.scenarios_passed, 1);
+    assert!(result.stdout.contains("custom js step executed"));
+}

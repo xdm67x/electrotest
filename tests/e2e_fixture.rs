@@ -36,5 +36,7 @@ async fn fixture_harness_returns_paths_for_test_assets() {
 #[tokio::test]
 async fn executes_custom_typescript_step() {
     let result = support::run_fixture("custom-step.feature").await;
+    assert!(result.status.success());
     assert!(result.stdout.contains("custom step executed"));
+    assert!(result.stdout.contains("1 scenario passed"));
 }

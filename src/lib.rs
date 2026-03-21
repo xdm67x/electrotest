@@ -15,5 +15,7 @@ pub enum Error {
     #[error(transparent)]
     Config(#[from] crate::config::ConfigError),
     #[error(transparent)]
+    Gherkin(#[from] crate::gherkin::CompileError),
+    #[error(transparent)]
     Json(#[from] serde_json::Error),
 }
