@@ -1,0 +1,11 @@
+{
+  "name": "electrotest-fixture-app",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^35.0.0"
+  }
+}
