@@ -1,7 +1,4 @@
 {
   "private": true,
-  "type": "module",
-  "dependencies": {
-    "wait-on": "^8.0.0"
-  }
+  "type": "module"
 }

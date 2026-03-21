@@ -63,6 +63,15 @@ fn resolves_click_step_to_builtin_handler() {
 }
 
 #[test]
+fn rejects_invalid_window_index_step() {
+    let registry = electrotest::steps::Registry::builtin();
+
+    assert!(registry
+        .resolve("When I switch to window index one")
+        .is_none());
+}
+
+#[test]
 fn normalizes_step_target_into_v1_locator_order() {
     let target = electrotest::steps::StepTarget {
         label: "Settings".into(),

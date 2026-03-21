@@ -33,6 +33,13 @@ pub struct FixtureRun {
     pub artifact_dir: PathBuf,
 }
 
+pub struct PreparedAttachFixture {
+    pub project_root: PathBuf,
+    endpoint_file: PathBuf,
+    artifact_dir: PathBuf,
+    launcher_script: PathBuf,
+}
+
 pub async fn run_fixture(feature_name: &str) -> FixtureRun {
     ensure_fixture_dependencies().await;
     run_launch_fixture(feature_name).await
@@ -40,7 +47,8 @@ pub async fn run_fixture(feature_name: &str) -> FixtureRun {
 
 pub async fn run_attach_fixture(feature_name: &str) -> FixtureRun {
     ensure_fixture_dependencies().await;
-    run_attach_fixture_project(feature_name).await
+    let prepared = prepare_attach_fixture_project(feature_name).await;
+    run_prepared_attach_fixture(prepared).await
 }
 
 pub async fn run_with_config(raw_config: &str) -> FixtureRun {
@@ -87,20 +95,26 @@ async fn run_launch_fixture(feature_name: &str) -> FixtureRun {
     .await
 }
 
-async fn run_attach_fixture_project(feature_name: &str) -> FixtureRun {
+pub async fn prepare_attach_fixture_project(feature_name: &str) -> PreparedAttachFixture {
     let fixture = fixture_project().await;
     let attach_fixture_root = fixture.root.join("attach");
     let project_root = temp_project_root();
-    let artifact_dir = project_root.join(".electrotest/artifacts");
-    let endpoint_dir = project_root.join(".electrotest");
+    let project_attach_root = project_root.join("attach");
+    let artifact_dir = project_attach_root.join(".electrotest/artifacts");
+    let endpoint_dir = project_attach_root.join(".electrotest");
     let endpoint_file = endpoint_dir.join("attach-endpoint.txt");
     let feature_dir = project_root.join("features");
     let step_dir = project_root.join("steps");
     std::fs::create_dir_all(&artifact_dir).unwrap();
     std::fs::create_dir_all(&endpoint_dir).unwrap();
+    std::fs::create_dir_all(&project_attach_root).unwrap();
     std::fs::create_dir_all(&feature_dir).unwrap();
     std::fs::create_dir_all(&step_dir).unwrap();
 
+    copy_fixture_file(
+        &attach_fixture_root.join("electrotest.toml"),
+        &project_attach_root.join("electrotest.toml"),
+    );
     copy_fixture_file(
         &fixture.root.join("features").join(feature_name),
         &feature_dir.join(feature_name),
@@ -110,25 +124,32 @@ async fn run_attach_fixture_project(feature_name: &str) -> FixtureRun {
         &step_dir.join("sample.steps.ts"),
     );
 
-    let raw_config = format!(
-        "[app]\nmode = \"attach\"\nendpoint_file = \".electrotest/attach-endpoint.txt\"\n\n[paths]\nfeatures = [\"features/{feature_name}\"]\nsteps = [\"steps/sample.steps.ts\"]\nartifacts = \".electrotest/artifacts\"\n"
-    );
-    std::fs::write(project_root.join("electrotest.toml"), raw_config).unwrap();
+    PreparedAttachFixture {
+        project_root,
+        endpoint_file,
+        artifact_dir,
+        launcher_script: attach_fixture_root.join("start-attached-session.mjs"),
+    }
+}
 
+pub async fn run_prepared_attach_fixture(prepared: PreparedAttachFixture) -> FixtureRun {
     let mut child = std::process::Command::new("node")
-        .arg(attach_fixture_root.join("start-attached-session.mjs"))
-        .arg(&endpoint_file)
+        .arg(&prepared.launcher_script)
+        .arg(&prepared.endpoint_file)
         .current_dir(workspace_root())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
         .spawn()
         .unwrap();
 
-    wait_for_file(&endpoint_file);
-    let endpoint = std::fs::read_to_string(&endpoint_file).unwrap();
+    wait_for_file(&prepared.endpoint_file);
+    let endpoint = std::fs::read_to_string(&prepared.endpoint_file).unwrap();
     wait_for_cdp_endpoint(endpoint.trim()).await;
 
-    let result = run_command_in_project(&project_root, artifact_dir.clone());
+    let result = run_command_in_project(
+        &prepared.project_root.join("attach"),
+        prepared.artifact_dir.clone(),
+    );
 
     let _ = child.kill();
     let _ = child.wait();
@@ -243,5 +264,14 @@ fn workspace_root() -> PathBuf {
 }
 
 fn temp_project_root() -> PathBuf {
-    tempfile::tempdir().unwrap().keep()
+    let root = std::env::temp_dir().join(format!(
+        "electrotest-fixture-{}-{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos()
+    ));
+    std::fs::create_dir_all(&root).unwrap();
+    root
 }

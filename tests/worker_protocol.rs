@@ -282,6 +282,19 @@ async fn loads_custom_typescript_step_patterns() {
 }
 
 #[tokio::test]
+async fn loads_custom_step_patterns_from_step_directory() {
+    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let step_paths = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/steps")];
+
+    let patterns = electrotest::engine::PlaywrightEngine::load_custom_step_patterns(&step_paths)
+        .await
+        .unwrap();
+
+    assert!(patterns.iter().any(|pattern| pattern == "the fixture window title should be {string}"));
+}
+
+#[tokio::test]
 async fn executes_custom_typescript_step_handler() {
     let _lock = runtime_bootstrap_lock().lock().unwrap();
     let step_paths = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))

@@ -67,6 +67,21 @@ fn fixture_support_skips_same_path_copy_to_protect_source_files() {
 }
 
 #[tokio::test]
+async fn attach_fixture_uses_tracked_fixture_config_layout() {
+    let fixture = support::fixture_project().await;
+    let config = fs::read_to_string(fixture.root.join("attach/electrotest.toml")).unwrap();
+    let prepared = support::prepare_attach_fixture_project("attach-mode.feature").await;
+
+    assert!(config.contains("features = [\"../features\"]"));
+    assert!(config.contains("steps = [\"../steps\"]"));
+    assert_eq!(fs::read_to_string(prepared.project_root.join("attach/electrotest.toml")).unwrap(), config);
+
+    let result = support::run_prepared_attach_fixture(prepared).await;
+
+    assert!(result.status.success());
+}
+
+#[tokio::test]
 async fn switches_window_by_title_in_multi_window_scenario() {
     let result = support::run_fixture("multi-window.feature").await;
     assert!(result.status.success());

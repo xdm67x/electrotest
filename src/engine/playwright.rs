@@ -117,8 +117,9 @@ impl PlaywrightEngine {
     }
 
     pub async fn load_custom_step_patterns(step_paths: &[PathBuf]) -> Result<Vec<String>, crate::Error> {
+        let step_paths = expand_step_paths(step_paths)?;
         let script = runtime_loader_script().await?;
-        let payload = serde_json::to_string(&step_paths_as_strings(step_paths))?;
+        let payload = serde_json::to_string(&step_paths_as_strings(&step_paths))?;
         let output = tokio::process::Command::new("node")
             .arg("--input-type=module")
             .arg("-e")
@@ -139,9 +140,10 @@ impl PlaywrightEngine {
         step_text: &str,
         app_title: &str,
     ) -> Result<String, crate::Error> {
+        let step_paths = expand_step_paths(step_paths)?;
         let script = runtime_executor_script().await?;
         let payload = serde_json::json!({
-            "stepPaths": step_paths_as_strings(step_paths),
+            "stepPaths": step_paths_as_strings(&step_paths),
             "stepText": step_text,
             "appTitle": app_title,
         });
@@ -288,4 +290,25 @@ fn command_error(context: &str, stderr: &[u8]) -> crate::Error {
         String::from_utf8_lossy(stderr).trim()
     ))
     .into()
+}
+
+fn expand_step_paths(step_paths: &[PathBuf]) -> Result<Vec<PathBuf>, crate::Error> {
+    let mut expanded = Vec::new();
+
+    for path in step_paths {
+        if path.is_dir() {
+            for entry in std::fs::read_dir(path)? {
+                let entry = entry?;
+                let candidate = entry.path();
+                if matches!(candidate.extension().and_then(|ext| ext.to_str()), Some("ts" | "js")) {
+                    expanded.push(candidate);
+                }
+            }
+        } else {
+            expanded.push(path.clone());
+        }
+    }
+
+    expanded.sort();
+    Ok(expanded)
 }

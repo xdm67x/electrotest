@@ -14,7 +14,11 @@ pub fn definitions() -> Vec<StepDefinition> {
         StepDefinition::new(
             "switch_window_by_index",
             switch_window_by_index_match,
-            |index| ResolvedStep::switch_window(WindowTarget::Index(index.parse().unwrap_or(0))),
+            |index| {
+                ResolvedStep::switch_window(WindowTarget::Index(
+                    index.parse().expect("validated window index"),
+                ))
+            },
         ),
     ]
 }
@@ -41,5 +45,8 @@ fn switch_window_by_title_match(step_text: &str) -> Option<String> {
 
 fn switch_window_by_index_match(step_text: &str) -> Option<String> {
     let prefix = "When I switch to window index ";
-    step_text.strip_prefix(prefix).map(str::to_owned)
+    step_text
+        .strip_prefix(prefix)
+        .filter(|value| value.parse::<usize>().is_ok())
+        .map(str::to_owned)
 }
