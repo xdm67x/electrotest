@@ -1,6 +1,22 @@
 use assert_cmd::Command;
 
 #[test]
+fn load_scenarios_discovers_feature_files_from_directory() {
+    let temp = tempfile::tempdir().unwrap();
+    std::fs::write(
+        temp.path().join("sample.feature"),
+        "Feature: Settings\n  Scenario: Open preferences\n    Given the Electron app is launched\n",
+    )
+    .unwrap();
+
+    let scenarios = electrotest::gherkin::load_scenarios([temp.path()]).unwrap();
+
+    assert_eq!(scenarios.len(), 1);
+    assert_eq!(scenarios[0].feature_name, "Settings");
+    assert_eq!(scenarios[0].scenario_name, "Open preferences");
+}
+
+#[test]
 fn list_prints_feature_and_scenario_names() {
     let temp = tempfile::tempdir().unwrap();
     std::fs::write(

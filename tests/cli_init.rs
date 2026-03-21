@@ -25,3 +25,17 @@ fn init_creates_project_files() {
     assert!(temp.path().join("steps").exists());
     assert!(temp.path().join("tsconfig.json").exists());
 }
+
+#[test]
+fn defaults_to_test_command_when_no_subcommand_is_given() {
+    let temp = tempfile::tempdir().unwrap();
+
+    Command::cargo_bin("electrotest")
+        .unwrap()
+        .current_dir(temp.path())
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains(
+            "config error: missing config file: electrotest.toml",
+        ));
+}

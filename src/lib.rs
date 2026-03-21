@@ -18,6 +18,8 @@ pub enum Error {
     #[error(transparent)]
     Gherkin(#[from] crate::gherkin::CompileError),
     #[error(transparent)]
+    GherkinLoad(#[from] crate::gherkin::LoadError),
+    #[error(transparent)]
     Json(#[from] serde_json::Error),
     #[error(transparent)]
     Runner(#[from] crate::runner::RunError),
