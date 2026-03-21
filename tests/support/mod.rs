@@ -38,6 +38,7 @@ pub struct PreparedAttachFixture {
     endpoint_file: PathBuf,
     artifact_dir: PathBuf,
     launcher_script: PathBuf,
+    fixture_app_root: PathBuf,
 }
 
 pub async fn run_fixture(feature_name: &str) -> FixtureRun {
@@ -72,19 +73,16 @@ pub fn copy_fixture_file(source: &Path, destination: &Path) {
 
 async fn ensure_fixture_dependencies() {
     let _lock = fixture_install_lock().lock().unwrap();
-    install_npm_dependencies(&fixture_root().join("electron-app"));
-    install_npm_dependencies(&fixture_root().join("attach"));
 }
 
 async fn run_launch_fixture(feature_name: &str) -> FixtureRun {
     let fixture = fixture_project().await;
-    let electron_bin = fixture
-        .root
-        .join("electron-app/node_modules/.bin/electron");
+    let fixture_app_root = prepare_fixture_app_root(&fixture.root);
+    let electron_bin = fixture_app_root.join("node_modules/.bin/electron");
     let raw_config = format!(
         "[app]\nmode = \"launch\"\ncommand = {:?}\nargs = [{:?}]\n\n[paths]\nfeatures = [\"features/{feature_name}\"]\nsteps = [\"steps/sample.steps.ts\"]\nartifacts = \".electrotest/artifacts\"\n",
         electron_bin.to_string_lossy(),
-        fixture.root.join("electron-app").to_string_lossy(),
+        fixture_app_root.to_string_lossy(),
     );
 
     run_electrotest_project(
@@ -98,6 +96,7 @@ async fn run_launch_fixture(feature_name: &str) -> FixtureRun {
 pub async fn prepare_attach_fixture_project(feature_name: &str) -> PreparedAttachFixture {
     let fixture = fixture_project().await;
     let attach_fixture_root = fixture.root.join("attach");
+    let fixture_app_root = prepare_fixture_app_root(&fixture.root);
     let project_root = temp_project_root();
     let project_attach_root = project_root.join("attach");
     let artifact_dir = project_attach_root.join(".electrotest/artifacts");
@@ -129,6 +128,7 @@ pub async fn prepare_attach_fixture_project(feature_name: &str) -> PreparedAttac
         endpoint_file,
         artifact_dir,
         launcher_script: attach_fixture_root.join("start-attached-session.mjs"),
+        fixture_app_root,
     }
 }
 
@@ -136,6 +136,7 @@ pub async fn run_prepared_attach_fixture(prepared: PreparedAttachFixture) -> Fix
     let mut child = std::process::Command::new("node")
         .arg(&prepared.launcher_script)
         .arg(&prepared.endpoint_file)
+        .arg(&prepared.fixture_app_root)
         .current_dir(workspace_root())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -224,6 +225,39 @@ fn install_npm_dependencies(dir: &Path) {
         .status()
         .unwrap();
     assert!(status.success(), "npm install failed in {}", dir.display());
+}
+
+fn prepare_fixture_app_root(fixture_root: &Path) -> PathBuf {
+    let app_root = temp_project_root().join("electron-app");
+    copy_fixture_directory(
+        &fixture_root.join("electron-app"),
+        &app_root,
+        &["node_modules", "package-lock.json"],
+    );
+    install_npm_dependencies(&app_root);
+    app_root
+}
+
+fn copy_fixture_directory(source: &Path, destination: &Path, exclude_names: &[&str]) {
+    std::fs::create_dir_all(destination).unwrap();
+
+    for entry in std::fs::read_dir(source).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        let file_name = entry.file_name();
+        let name = file_name.to_string_lossy();
+
+        if exclude_names.iter().any(|excluded| *excluded == name) {
+            continue;
+        }
+
+        let dest_path = destination.join(&file_name);
+        if path.is_dir() {
+            copy_fixture_directory(&path, &dest_path, exclude_names);
+        } else {
+            copy_fixture_file(&path, &dest_path);
+        }
+    }
 }
 
 fn wait_for_file(path: &Path) {

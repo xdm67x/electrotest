@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Request {
     Ping,
+    CloseApp,
     LaunchApp {
         command: String,
         args: Vec<String>,
@@ -28,6 +29,7 @@ pub enum Request {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Response {
     Pong,
+    AppClosed,
     AppLaunched {
         window_id: String,
     },

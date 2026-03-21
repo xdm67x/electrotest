@@ -21,6 +21,17 @@ impl PlaywrightEngine {
     }
 
     pub async fn shutdown(&mut self) -> Result<(), crate::Error> {
+        match self
+            .worker
+            .request(&crate::engine::protocol::Request::CloseApp)
+            .await
+        {
+            Ok(crate::engine::protocol::Response::AppClosed)
+            | Ok(crate::engine::protocol::Response::Error { .. })
+            | Err(_) => {}
+            Ok(other) => return Err(unexpected_response("close_app", other)),
+        }
+
         self.worker.shutdown().await.map_err(worker_error)
     }
 

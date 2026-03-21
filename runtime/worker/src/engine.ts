@@ -26,6 +26,8 @@ export async function handleRequest(request: Request): Promise<Response> {
     switch (request.type) {
       case "ping":
         return { type: "pong" };
+      case "close_app":
+        return await closeApp();
       case "launch_app":
         return await launchApp(request.command, request.args);
       case "attach_app":
@@ -50,6 +52,7 @@ export async function handleRequest(request: Request): Promise<Response> {
 }
 
 async function launchApp(command: string, args: string[]): Promise<Response> {
+  await closeSession();
   await stopLaunchedChild();
   const port = await reservePort();
   const childProcess = await importNodeModule("node:child_process");
@@ -75,6 +78,8 @@ async function launchApp(command: string, args: string[]): Promise<Response> {
 }
 
 async function attachApp(endpoint: string): Promise<Response> {
+  await closeSession();
+  await stopLaunchedChild();
   state.browser = await connectToEndpoint(endpoint);
   const context = state.browser.contexts()[0] ?? (await state.browser.newContext());
   state.context = context;
@@ -270,6 +275,27 @@ async function stopLaunchedChild(): Promise<void> {
     // best-effort cleanup
   }
   state.launchedChild = null;
+}
+
+async function closeApp(): Promise<Response> {
+  await closeSession();
+  await stopLaunchedChild();
+  return { type: "app_closed" };
+}
+
+async function closeSession(): Promise<void> {
+  if (state.browser) {
+    try {
+      await state.browser.close();
+    } catch {
+      // best-effort cleanup
+    }
+  }
+
+  state.browser = null;
+  state.context = null;
+  state.pages = [];
+  state.activePage = null;
 }
 
 async function importNodeModule(specifier: string): Promise<any> {

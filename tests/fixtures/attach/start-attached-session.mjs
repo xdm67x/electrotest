@@ -3,11 +3,12 @@ import fs from "node:fs";
 import net from "node:net";
 
 const endpointFile = process.argv[2];
+const fixtureAppRoot = process.argv[3];
 
 const port = await reservePort();
 const child = spawn(
-  "./tests/fixtures/electron-app/node_modules/.bin/electron",
-  ["./tests/fixtures/electron-app", `--remote-debugging-port=${port}`],
+  `${fixtureAppRoot}/node_modules/.bin/electron`,
+  [fixtureAppRoot, `--remote-debugging-port=${port}`],
   {
     stdio: "inherit",
   },

@@ -1,6 +1,7 @@
 mod support;
 
 use std::fs;
+use std::process::Command as StdCommand;
 
 #[tokio::test]
 async fn fixture_harness_returns_paths_for_test_assets() {
@@ -126,4 +127,47 @@ async fn test_command_normalizes_config_failures_into_runner_errors() {
 
     assert!(!result.status.success());
     assert!(result.stdout.contains("config error: missing launch command"));
+}
+
+#[tokio::test]
+async fn launch_fixture_cleans_up_electron_processes() {
+    let before = fixture_electron_process_count();
+
+    let result = support::run_fixture("basic-launch.feature").await;
+
+    assert!(result.status.success());
+
+    let after = fixture_electron_process_count();
+    assert_eq!(after, before, "fixture Electron processes leaked: before={before}, after={after}");
+}
+
+#[tokio::test]
+async fn fixture_runs_do_not_write_dependency_artifacts_into_tracked_fixtures() {
+    let fixture = support::fixture_project().await;
+    let electron_node_modules = fixture.root.join("electron-app/node_modules");
+    let electron_lockfile = fixture.root.join("electron-app/package-lock.json");
+    let attach_lockfile = fixture.root.join("attach/package-lock.json");
+
+    std::fs::remove_dir_all(&electron_node_modules).ok();
+    std::fs::remove_file(&electron_lockfile).ok();
+    std::fs::remove_file(&attach_lockfile).ok();
+
+    let result = support::run_fixture("basic-launch.feature").await;
+    assert!(result.status.success());
+
+    assert!(!electron_node_modules.exists(), "tracked fixture node_modules should not be created");
+    assert!(!electron_lockfile.exists(), "tracked fixture package-lock.json should not be created");
+    assert!(!attach_lockfile.exists(), "tracked attach package-lock.json should not be created");
+}
+
+fn fixture_electron_process_count() -> usize {
+    let output = StdCommand::new("ps")
+        .args(["-Ao", "command"])
+        .output()
+        .unwrap();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    stdout
+        .lines()
+        .filter(|line| line.contains("tests/fixtures/electron-app"))
+        .count()
 }

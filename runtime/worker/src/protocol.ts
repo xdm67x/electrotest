@@ -1,5 +1,6 @@
 export type Request =
   | { type: "ping" }
+  | { type: "close_app" }
   | { type: "launch_app"; command: string; args: string[] }
   | { type: "attach_app"; endpoint: string }
   | { type: "switch_window"; target: WindowTarget }
@@ -9,6 +10,7 @@ export type Request =
 
 export type Response =
   | { type: "pong" }
+  | { type: "app_closed" }
   | { type: "app_launched"; window_id: string }
   | { type: "app_attached"; window_id: string }
   | { type: "window_switched"; window_id: string; description: string }
