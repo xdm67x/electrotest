@@ -1,0 +1,8 @@
+[app]
+mode = "attach"
+endpoint_file = ".electrotest/attach-endpoint.txt"
+
+[paths]
+features = ["../features"]
+steps = ["../steps"]
+artifacts = ".electrotest/artifacts"
