@@ -32,3 +32,9 @@ async fn fixture_harness_returns_paths_for_test_assets() {
     let sample_steps = fs::read_to_string(fixture.root.join("steps/sample.steps.ts")).unwrap();
     assert!(sample_steps.contains("the fixture window title should be {string}"));
 }
+
+#[tokio::test]
+async fn executes_custom_typescript_step() {
+    let result = support::run_fixture("custom-step.feature").await;
+    assert!(result.stdout.contains("custom step executed"));
+}

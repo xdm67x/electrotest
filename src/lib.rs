@@ -14,4 +14,6 @@ pub enum Error {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Config(#[from] crate::config::ConfigError),
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
 }

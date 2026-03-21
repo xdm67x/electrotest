@@ -253,3 +253,47 @@ async fn shutdown_kills_worker_that_does_not_exit_on_eof() {
         .unwrap()
         .unwrap();
 }
+
+#[test]
+fn resolves_custom_step_patterns_in_registry() {
+    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let registry = electrotest::steps::Registry::with_custom_patterns(vec![
+        "the fixture window title should be {string}".to_owned(),
+    ]);
+
+    let step = registry
+        .resolve("Given the fixture window title should be \"Fixture App\"")
+        .unwrap();
+
+    assert_eq!(step.action_name(), "custom");
+}
+
+#[tokio::test]
+async fn loads_custom_typescript_step_patterns() {
+    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let step_paths = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/steps/sample.steps.ts")];
+
+    let patterns = electrotest::engine::PlaywrightEngine::load_custom_step_patterns(&step_paths)
+        .await
+        .unwrap();
+
+    assert!(patterns.iter().any(|pattern| pattern == "the fixture window title should be {string}"));
+}
+
+#[tokio::test]
+async fn executes_custom_typescript_step_handler() {
+    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let step_paths = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/steps/sample.steps.ts")];
+
+    let output = electrotest::engine::PlaywrightEngine::execute_custom_step(
+        &step_paths,
+        "Given the fixture window title should be \"Fixture App\"",
+        "Fixture App",
+    )
+    .await
+    .unwrap();
+
+    assert!(output.contains("custom step executed"));
+}
