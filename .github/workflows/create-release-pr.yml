@@ -83,10 +83,10 @@ jobs:
 
           cargo metadata --format-version 1 --no-deps >/dev/null
 
-          git diff --exit-code -- Cargo.toml Cargo.lock >/dev/null 2>&1 && {
-            echo "failed to update release files" >&2
+          if git diff --quiet -- Cargo.toml; then
+            echo "failed to update Cargo.toml version" >&2
             exit 1
-          }
+          fi
 
       - name: Create branch, commit, and open PR
         shell: bash
