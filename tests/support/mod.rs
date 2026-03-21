@@ -42,38 +42,42 @@ async fn run_electrotest_fixture(feature_name: &str, config_path: Option<&str>) 
     let feature_path = fixture.root.join("features").join(feature_name);
     let step_paths = vec![fixture.root.join("steps/sample.steps.ts")];
 
-    let result = electrotest::engine::PlaywrightEngine::run_custom_step_feature(
+    let execution = electrotest::engine::PlaywrightEngine::run_custom_step_feature(
         &feature_path,
         &step_paths,
         "Fixture App",
     )
-    .await
-    .unwrap();
+    .await;
 
     let artifact_dir = fixture.root.join(".electrotest/artifacts");
     std::fs::create_dir_all(&artifact_dir).unwrap();
 
     let _ = config_path;
 
+    let (status, stdout) = match execution {
+        Ok(result) => (exit_status(true), result.stdout),
+        Err(error) => (exit_status(false), error.to_string()),
+    };
+
     FixtureRun {
-        status: success_status(),
-        stdout: result.stdout,
+        status,
+        stdout,
         artifact_dir,
     }
 }
 
-fn success_status() -> ExitStatus {
+fn exit_status(success: bool) -> ExitStatus {
     #[cfg(unix)]
     {
         use std::os::unix::process::ExitStatusExt;
 
-        ExitStatus::from_raw(0)
+        ExitStatus::from_raw(if success { 0 } else { 1 << 8 })
     }
 
     #[cfg(windows)]
     {
         use std::os::windows::process::ExitStatusExt;
 
-        ExitStatus::from_raw(0)
+        ExitStatus::from_raw(if success { 0 } else { 1 })
     }
 }

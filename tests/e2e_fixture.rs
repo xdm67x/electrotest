@@ -40,3 +40,10 @@ async fn executes_custom_typescript_step() {
     assert!(result.stdout.contains("custom step executed"));
     assert!(result.stdout.contains("1 scenario passed"));
 }
+
+#[tokio::test]
+async fn fixture_helper_reports_real_failure_for_unsupported_step() {
+    let result = support::run_fixture("basic-launch.feature").await;
+    assert!(!result.status.success());
+    assert!(result.stdout.contains("unsupported non-custom step"));
+}

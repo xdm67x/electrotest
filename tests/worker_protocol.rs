@@ -314,6 +314,7 @@ async fn executes_custom_feature_file_through_product_path() {
     .unwrap();
 
     assert_eq!(result.scenarios_passed, 1);
+    assert!(result.succeeded);
     assert!(result.stdout.contains("custom step executed"));
 }
 
@@ -339,5 +340,30 @@ async fn executes_custom_javascript_step_module() {
     .unwrap();
 
     assert_eq!(result.scenarios_passed, 1);
+    assert!(result.succeeded);
     assert!(result.stdout.contains("custom js step executed"));
+}
+
+#[tokio::test]
+async fn rejects_feature_with_unsupported_builtin_step() {
+    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let temp = tempfile::tempdir().unwrap();
+    let feature_path = temp.path().join("unsupported.feature");
+    std::fs::write(
+        &feature_path,
+        "Feature: Unsupported builtin\n\n  Scenario: Uses builtin\n    When I click on \"Settings\"\n",
+    )
+    .unwrap();
+    let step_paths = vec![std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/steps/sample.steps.ts")];
+
+    let error = electrotest::engine::PlaywrightEngine::run_custom_step_feature(
+        &feature_path,
+        &step_paths,
+        "Fixture App",
+    )
+    .await
+    .unwrap_err();
+
+    assert!(error.to_string().contains("unsupported non-custom step"));
 }

@@ -8,6 +8,7 @@ pub struct PlaywrightEngine {
 pub struct CustomStepFeatureResult {
     pub scenarios_passed: usize,
     pub stdout: String,
+    pub succeeded: bool,
 }
 
 impl PlaywrightEngine {
@@ -82,11 +83,17 @@ impl PlaywrightEngine {
                     std::io::Error::other(format!("no step matched: {}", step.text))
                 })?;
 
-                if resolved.action_name() == "custom" {
-                    let output = Self::execute_custom_step(step_paths, &step.text, app_title).await?;
-                    if !output.is_empty() {
-                        outputs.push(output);
-                    }
+                if resolved.action_name() != "custom" {
+                    return Err(std::io::Error::other(format!(
+                        "unsupported non-custom step in custom-step feature path: {}",
+                        step.text,
+                    ))
+                    .into());
+                }
+
+                let output = Self::execute_custom_step(step_paths, &step.text, app_title).await?;
+                if !output.is_empty() {
+                    outputs.push(output);
                 }
             }
 
@@ -98,6 +105,7 @@ impl PlaywrightEngine {
         Ok(CustomStepFeatureResult {
             scenarios_passed,
             stdout: outputs.join("\n"),
+            succeeded: true,
         })
     }
 }
