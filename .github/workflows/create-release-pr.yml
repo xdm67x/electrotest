@@ -1,0 +1,131 @@
+name: create-release-pr
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version in the format X.Y.Z
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare-release-pr:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Validate and update versioned files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ inputs.version }}"
+
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+            echo "invalid version format: $version" >&2
+            exit 1
+          }
+
+          head_commit="$(git rev-parse HEAD)"
+          main_commit="$(git rev-parse origin/main)"
+          [[ "$head_commit" == "$main_commit" ]] || {
+            echo "workflow must create release branches from origin/main" >&2
+            exit 1
+          }
+
+          current_version="$(python3 - <<'PY'
+          from pathlib import Path
+          import tomllib
+
+          data = tomllib.loads(Path('Cargo.toml').read_text())
+          print(data['package']['version'])
+          PY
+          )"
+
+          [[ "$version" != "$current_version" ]] || {
+            echo "unchanged version: $version" >&2
+            exit 1
+          }
+
+          python3 - <<'PY' "$version"
+          from pathlib import Path
+          import re
+          import sys
+
+          path = Path('Cargo.toml')
+          text = path.read_text()
+          updated = re.sub(
+              r'(?m)^version = ".*"$',
+              f'version = "{sys.argv[1]}"',
+              text,
+              count=1,
+          )
+
+          if updated == text:
+              raise SystemExit('failed to update Cargo.toml version line')
+
+          path.write_text(updated)
+          PY
+
+          cargo metadata --format-version 1 --no-deps >/dev/null
+
+          git diff --exit-code -- Cargo.toml Cargo.lock >/dev/null 2>&1 && {
+            echo "failed to update release files" >&2
+            exit 1
+          }
+
+      - name: Create branch, commit, and open PR
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${{ inputs.version }}"
+          branch="release/${version}"
+
+          git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1 && {
+            echo "release branch already exists on origin: $branch" >&2
+            exit 1
+          }
+
+          existing_prs="$(gh pr list --base main --head "$branch" --state all --json number --jq 'length')"
+          [[ "$existing_prs" == "0" ]] || {
+            echo "release PR already exists for branch: $branch" >&2
+            exit 1
+          }
+
+          git switch -c "$branch"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth status
+
+          git add Cargo.toml Cargo.lock
+          git commit -m "release: ${version}"
+          git push --set-upstream origin "$branch"
+
+          pr_body="$(printf '%s\n' \
+            '## Summary' \
+            "- bump Cargo.toml to ${version}" \
+            '- refresh Cargo.lock' \
+            '' \
+            '## Next Step' \
+            "- merge this PR, then push tag v${version} to publish the release")"
+
+          gh pr create \
+            --base main \
+            --head "$branch" \
+            --title "release: ${version}" \
+            --body "$pr_body"

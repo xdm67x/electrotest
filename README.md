@@ -220,6 +220,30 @@ cargo test --test cli_doctor -- --nocapture
 cargo test --test e2e_fixture -- --nocapture
 ```
 
+## Releases
+
+Electrotest uses a two-step release flow:
+
+1. run the `create-release-pr` workflow with a version like `0.1.0`
+2. review and merge the generated release PR
+3. push tag `v0.1.0`
+
+The tag-driven release workflow publishes raw binaries for:
+
+- `aarch64-apple-darwin`
+- `x86_64-pc-windows-msvc`
+- `x86_64-unknown-linux-musl`
+
+Published assets are direct binaries plus `SHA256SUMS.txt`; the release process does not produce `zip` or `tar.gz` archives.
+
+Before relying on the automation, maintainers should verify all GitHub-side release paths:
+
+- a successful `create-release-pr` run with valid `X.Y.Z` input
+- an invalid release PR input case that fails early
+- a successful tag release where `vX.Y.Z` matches `Cargo.toml`
+- a mismatch tag case that fails before publishing
+- uploaded assets named exactly `electrotest-vX.Y.Z-aarch64-apple-darwin`, `electrotest-vX.Y.Z-x86_64-pc-windows-msvc.exe`, `electrotest-vX.Y.Z-x86_64-unknown-linux-musl`, and `SHA256SUMS.txt`
+
 ## Repository Layout
 
 - `src/cli/` - CLI parsing and command entrypoints

@@ -72,7 +72,7 @@ pub fn copy_fixture_file(source: &Path, destination: &Path) {
 }
 
 async fn ensure_fixture_dependencies() {
-    let _lock = fixture_install_lock().lock().unwrap();
+    let _ = fixture_install_lock();
 }
 
 async fn run_launch_fixture(feature_name: &str) -> FixtureRun {
@@ -228,6 +228,7 @@ fn install_npm_dependencies(dir: &Path) {
 }
 
 fn prepare_fixture_app_root(fixture_root: &Path) -> PathBuf {
+    let _lock = fixture_install_lock().lock().unwrap();
     let app_root = temp_project_root().join("electron-app");
     copy_fixture_directory(
         &fixture_root.join("electron-app"),
@@ -308,4 +309,37 @@ fn temp_project_root() -> PathBuf {
     ));
     std::fs::create_dir_all(&root).unwrap();
     root
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::mpsc;
+    use std::time::Duration;
+
+    #[test]
+    fn fixture_app_preparation_waits_for_install_lock() {
+        let temp = tempfile::tempdir().unwrap();
+        let fixture_root = temp.path();
+        let electron_app = fixture_root.join("electron-app");
+        std::fs::create_dir_all(&electron_app).unwrap();
+        std::fs::write(electron_app.join("main.js"), "console.log('fixture');\n").unwrap();
+
+        let lock = fixture_install_lock().lock().unwrap();
+        let fixture_root = fixture_root.to_path_buf();
+        let (tx, rx) = mpsc::channel();
+
+        let handle = std::thread::spawn(move || {
+            let app_root = prepare_fixture_app_root(&fixture_root);
+            tx.send(app_root).unwrap();
+        });
+
+        assert!(
+            rx.recv_timeout(Duration::from_millis(200)).is_err(),
+            "fixture app preparation should wait while the install lock is held"
+        );
+
+        drop(lock);
+        handle.join().unwrap();
+    }
 }
