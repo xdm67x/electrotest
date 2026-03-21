@@ -2,7 +2,10 @@
 async fn serializes_and_reads_worker_response() {
     let request = electrotest::engine::protocol::Request::Ping;
     let json = serde_json::to_string(&request).unwrap();
-    assert!(json.contains("\"type\":\"ping\""));
+
+    let decoded: electrotest::engine::protocol::Request = serde_json::from_str(&json).unwrap();
+
+    assert_eq!(decoded, electrotest::engine::protocol::Request::Ping);
 }
 
 #[tokio::test]
