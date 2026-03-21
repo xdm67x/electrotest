@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use tokio::process::Command;
 
 const PACKAGE_JSON: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/runtime/worker/package.json"));
+const PACKAGE_LOCK_JSON: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/runtime/worker/package-lock.json"));
 const TSCONFIG_JSON: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/runtime/worker/tsconfig.json"));
 const INDEX_TS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/runtime/worker/src/index.ts"));
 const PROTOCOL_TS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/runtime/worker/src/protocol.ts"));
@@ -38,6 +39,7 @@ async fn copy_embedded_runtime(cache_root: &Path) -> Result<(), crate::Error> {
     tokio::fs::create_dir_all(cache_root.join("scripts")).await?;
 
     tokio::fs::write(cache_root.join("package.json"), PACKAGE_JSON).await?;
+    tokio::fs::write(cache_root.join("package-lock.json"), PACKAGE_LOCK_JSON).await?;
     tokio::fs::write(cache_root.join("tsconfig.json"), TSCONFIG_JSON).await?;
     tokio::fs::write(cache_root.join("src/index.ts"), INDEX_TS).await?;
     tokio::fs::write(cache_root.join("src/protocol.ts"), PROTOCOL_TS).await?;
@@ -48,7 +50,13 @@ async fn copy_embedded_runtime(cache_root: &Path) -> Result<(), crate::Error> {
 }
 
 async fn run_npm_install(cache_root: &Path) -> Result<(), crate::Error> {
-    run_command(cache_root, "npm", &["install"]).await
+    let args: &[&str] = if cache_root.join("package-lock.json").exists() {
+        &["ci"]
+    } else {
+        &["install"]
+    };
+
+    run_command(cache_root, "npm", args).await
 }
 
 async fn run_worker_build(cache_root: &Path) -> Result<(), crate::Error> {

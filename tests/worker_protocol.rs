@@ -1,3 +1,58 @@
+use std::ffi::OsString;
+use std::path::Path;
+use std::sync::{Mutex, OnceLock};
+
+fn runtime_bootstrap_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
+
+struct EnvVarGuard {
+    key: &'static str,
+    original: Option<OsString>,
+}
+
+impl EnvVarGuard {
+    fn set(key: &'static str, value: impl AsRef<std::ffi::OsStr>) -> Self {
+        let original = std::env::var_os(key);
+        unsafe {
+            std::env::set_var(key, value);
+        }
+        Self { key, original }
+    }
+}
+
+impl Drop for EnvVarGuard {
+    fn drop(&mut self) {
+        match &self.original {
+            Some(value) => unsafe {
+                std::env::set_var(self.key, value);
+            },
+            None => unsafe {
+                std::env::remove_var(self.key);
+            },
+        }
+    }
+}
+
+fn write_fake_npm(dir: &Path) {
+    let npm_path = dir.join("npm");
+    std::fs::write(
+        &npm_path,
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$ELECTROTEST_NPM_LOG\"\nif [ \"$1\" = \"ci\" ]; then\n  mkdir -p node_modules/playwright\n  exit 0\nfi\nif [ \"$1\" = \"run\" ] && [ \"$2\" = \"build\" ]; then\n  mkdir -p dist\n  printf 'process.stdin.setEncoding(\\\"utf8\\\");\\nfor await (const _ of process.stdin) { process.stdout.write(\"{\\\"type\\\":\\\"pong\\\"}\\\\n\"); }\\n' > dist/index.js\n  exit 0\nfi\necho \"unexpected npm args: $*\" >&2\nexit 1\n",
+    )
+    .unwrap();
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let mut permissions = std::fs::metadata(&npm_path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&npm_path, permissions).unwrap();
+    }
+}
+
 #[tokio::test]
 async fn serializes_and_reads_worker_response() {
     let request = electrotest::engine::protocol::Request::Ping;
@@ -32,16 +87,50 @@ async fn serializes_launch_and_attach_requests() {
 
 #[tokio::test]
 async fn bootstraps_worker_runtime_into_cache() {
+    let _lock = runtime_bootstrap_lock().lock().unwrap();
     let cache = tempfile::tempdir().unwrap();
     let runtime = electrotest::project::bootstrap::materialize_runtime(cache.path())
         .await
         .unwrap();
+    let runtime_root = runtime.parent().unwrap();
 
     assert!(runtime.join("index.js").exists());
+    assert!(runtime_root.join("package-lock.json").exists());
+}
+
+#[tokio::test]
+async fn bootstraps_worker_runtime_with_npm_ci_when_lockfile_is_present() {
+    let _lock = runtime_bootstrap_lock().lock().unwrap();
+    let cache = tempfile::tempdir().unwrap();
+    let bin_dir = tempfile::tempdir().unwrap();
+    let npm_log = tempfile::NamedTempFile::new().unwrap();
+    write_fake_npm(bin_dir.path());
+
+    let original_path = std::env::var_os("PATH").unwrap_or_default();
+    let path = if original_path.is_empty() {
+        OsString::from(bin_dir.path())
+    } else {
+        let mut joined = OsString::from(bin_dir.path());
+        joined.push(":");
+        joined.push(original_path);
+        joined
+    };
+    let _path_guard = EnvVarGuard::set("PATH", &path);
+    let _log_guard = EnvVarGuard::set("ELECTROTEST_NPM_LOG", npm_log.path());
+
+    let runtime = electrotest::project::bootstrap::materialize_runtime(cache.path())
+        .await
+        .unwrap();
+    let install_log = std::fs::read_to_string(npm_log.path()).unwrap();
+
+    assert!(runtime.join("index.js").exists());
+    assert!(install_log.lines().any(|line| line == "ci"));
+    assert!(install_log.lines().any(|line| line == "run build"));
 }
 
 #[tokio::test]
 async fn starts_bootstrapped_worker_and_exchanges_ping() {
+    let _lock = runtime_bootstrap_lock().lock().unwrap();
     let cache = tempfile::tempdir().unwrap();
     let runtime = electrotest::project::bootstrap::materialize_runtime(cache.path())
         .await
