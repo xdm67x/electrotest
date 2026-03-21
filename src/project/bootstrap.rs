@@ -50,13 +50,7 @@ async fn copy_embedded_runtime(cache_root: &Path) -> Result<(), crate::Error> {
 }
 
 async fn run_npm_install(cache_root: &Path) -> Result<(), crate::Error> {
-    let args: &[&str] = if cache_root.join("package-lock.json").exists() {
-        &["ci"]
-    } else {
-        &["install"]
-    };
-
-    run_command(cache_root, "npm", args).await
+    run_command(cache_root, "npm", &["install"]).await
 }
 
 async fn run_worker_build(cache_root: &Path) -> Result<(), crate::Error> {

@@ -39,7 +39,7 @@ fn write_fake_npm(dir: &Path) {
     let npm_path = dir.join("npm");
     std::fs::write(
         &npm_path,
-        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$ELECTROTEST_NPM_LOG\"\nif [ \"$1\" = \"ci\" ]; then\n  mkdir -p node_modules/playwright\n  exit 0\nfi\nif [ \"$1\" = \"run\" ] && [ \"$2\" = \"build\" ]; then\n  mkdir -p dist\n  printf 'process.stdin.setEncoding(\\\"utf8\\\");\\nfor await (const _ of process.stdin) { process.stdout.write(\"{\\\"type\\\":\\\"pong\\\"}\\\\n\"); }\\n' > dist/index.js\n  exit 0\nfi\necho \"unexpected npm args: $*\" >&2\nexit 1\n",
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$ELECTROTEST_NPM_LOG\"\nif [ \"$1\" = \"install\" ]; then\n  mkdir -p node_modules/playwright\n  exit 0\nfi\nif [ \"$1\" = \"run\" ] && [ \"$2\" = \"build\" ]; then\n  mkdir -p dist\n  printf 'process.stdin.setEncoding(\\\"utf8\\\");\\nfor await (const _ of process.stdin) { process.stdout.write(\"{\\\"type\\\":\\\"pong\\\"}\\\\n\"); }\\n' > dist/index.js\n  exit 0\nfi\necho \"unexpected npm args: $*\" >&2\nexit 1\n",
     )
     .unwrap();
 
@@ -99,7 +99,7 @@ async fn bootstraps_worker_runtime_into_cache() {
 }
 
 #[tokio::test]
-async fn bootstraps_worker_runtime_with_npm_ci_when_lockfile_is_present() {
+async fn bootstraps_worker_runtime_with_npm_install_when_lockfile_is_present() {
     let _lock = runtime_bootstrap_lock().lock().unwrap();
     let cache = tempfile::tempdir().unwrap();
     let bin_dir = tempfile::tempdir().unwrap();
@@ -124,7 +124,7 @@ async fn bootstraps_worker_runtime_with_npm_ci_when_lockfile_is_present() {
     let install_log = std::fs::read_to_string(npm_log.path()).unwrap();
 
     assert!(runtime.join("index.js").exists());
-    assert!(install_log.lines().any(|line| line == "ci"));
+    assert!(install_log.lines().any(|line| line == "install"));
     assert!(install_log.lines().any(|line| line == "run build"));
 }
 
