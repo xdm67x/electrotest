@@ -47,3 +47,11 @@ async fn fixture_helper_reports_real_failure_for_unsupported_step() {
     assert!(!result.status.success());
     assert!(result.stdout.contains("unsupported non-custom step"));
 }
+
+#[tokio::test]
+async fn test_command_returns_non_zero_on_failure() {
+    let result = support::run_fixture("failing-assertion.feature").await;
+
+    assert!(!result.status.success());
+    assert!(result.stdout.contains("1 scenario failed"));
+}

@@ -2,6 +2,7 @@ pub mod cli;
 pub mod config;
 pub mod engine;
 pub mod gherkin;
+pub mod runner;
 pub mod steps;
 pub mod project {
     pub mod bootstrap;
@@ -18,4 +19,8 @@ pub enum Error {
     Gherkin(#[from] crate::gherkin::CompileError),
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    Runner(#[from] crate::runner::RunError),
+    #[error("{0} scenario failed")]
+    TestFailures(usize),
 }
