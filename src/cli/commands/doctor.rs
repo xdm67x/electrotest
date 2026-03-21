@@ -14,10 +14,10 @@ pub async fn run() -> Result<(), crate::Error> {
 }
 
 async fn ensure_node_available() -> Result<(), crate::Error> {
-    let status = Command::new("node").arg("--version").status().await;
+    let status = Command::new("node").arg("--version").output().await;
 
     match status {
-        Ok(status) if status.success() => Ok(()),
+        Ok(output) if output.status.success() => Ok(()),
         _ => Err(std::io::Error::new(
             std::io::ErrorKind::NotFound,
             "Node.js is required but was not found on PATH",

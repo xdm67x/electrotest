@@ -28,6 +28,12 @@ fn write_launch_config(dir: &std::path::Path, command_line: &str, features: &str
     .unwrap();
 }
 
+fn write_worker_dependency(cache_dir: &std::path::Path) {
+    let runtime_dir = cache_dir.join("worker/v1");
+    std::fs::create_dir_all(runtime_dir.join("node_modules/playwright")).unwrap();
+    std::fs::write(runtime_dir.join("package.json"), "{}\n").unwrap();
+}
+
 #[test]
 fn doctor_fails_when_node_is_missing() {
     let temp = tempfile::tempdir().unwrap();
@@ -103,7 +109,31 @@ fn doctor_fails_for_invalid_startup_config() {
 }
 
 #[test]
-fn doctor_reports_missing_feature_and_step_paths() {
+fn doctor_succeeds_with_only_ok_output() {
+    let temp = tempfile::tempdir().unwrap();
+    let bin_dir = temp.path().join("bin");
+    let cache_dir = temp.path().join("cache");
+    std::fs::create_dir_all(&bin_dir).unwrap();
+    write_fake_node(&bin_dir, "v20.0.0");
+    write_worker_dependency(&cache_dir);
+    write_launch_config(temp.path(), "command = \"npm\"", "features", "steps");
+    std::fs::create_dir_all(temp.path().join("features")).unwrap();
+    std::fs::create_dir_all(temp.path().join("steps")).unwrap();
+
+    Command::cargo_bin("electrotest")
+        .unwrap()
+        .current_dir(temp.path())
+        .env("PATH", &bin_dir)
+        .env("ELECTROTEST_CACHE_DIR", &cache_dir)
+        .arg("doctor")
+        .assert()
+        .success()
+        .stdout("doctor: ok\n")
+        .stderr("");
+}
+
+#[test]
+fn doctor_reports_missing_feature_path() {
     let temp = tempfile::tempdir().unwrap();
     let bin_dir = temp.path().join("bin");
     let cache_dir = temp.path().join("cache");
@@ -113,8 +143,9 @@ fn doctor_reports_missing_feature_and_step_paths() {
         temp.path(),
         "command = \"npm\"",
         "missing-features",
-        "missing-steps",
+        "steps",
     );
+    std::fs::create_dir_all(temp.path().join("steps")).unwrap();
 
     Command::cargo_bin("electrotest")
         .unwrap()
@@ -125,4 +156,30 @@ fn doctor_reports_missing_feature_and_step_paths() {
         .assert()
         .failure()
         .stderr(predicates::str::contains("missing-features"));
+}
+
+#[test]
+fn doctor_reports_missing_step_path() {
+    let temp = tempfile::tempdir().unwrap();
+    let bin_dir = temp.path().join("bin");
+    let cache_dir = temp.path().join("cache");
+    std::fs::create_dir_all(&bin_dir).unwrap();
+    write_fake_node(&bin_dir, "v20.0.0");
+    write_launch_config(
+        temp.path(),
+        "command = \"npm\"",
+        "features",
+        "missing-steps",
+    );
+    std::fs::create_dir_all(temp.path().join("features")).unwrap();
+
+    Command::cargo_bin("electrotest")
+        .unwrap()
+        .current_dir(temp.path())
+        .env("PATH", &bin_dir)
+        .env("ELECTROTEST_CACHE_DIR", &cache_dir)
+        .arg("doctor")
+        .assert()
+        .failure()
+        .stderr(predicates::str::contains("missing-steps"));
 }
