@@ -14,7 +14,7 @@ fn list_prints_feature_and_scenario_names() {
         .args(["list", "--features", temp.path().to_str().unwrap()])
         .assert()
         .success()
-        .stdout(predicates::str::contains("Open preferences"));
+        .stdout(predicates::str::contains("Settings: Open preferences"));
 }
 
 #[test]
