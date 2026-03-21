@@ -7,7 +7,5 @@ pub mod project {
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    Config(#[from] config::ConfigError),
-    #[error(transparent)]
     Io(#[from] std::io::Error),
 }

@@ -1,5 +1,13 @@
 use std::fs;
 
+struct CurrentDirGuard(std::path::PathBuf);
+
+impl Drop for CurrentDirGuard {
+    fn drop(&mut self) {
+        std::env::set_current_dir(&self.0).unwrap();
+    }
+}
+
 #[test]
 fn parses_launch_mode_config() {
     let raw = r#"
@@ -33,7 +41,7 @@ fn rejects_launch_mode_without_command() {
     let error = electrotest::config::from_str(raw).unwrap_err();
     assert!(matches!(
         error,
-        electrotest::Error::Config(electrotest::config::ConfigError::MissingLaunchCommand)
+        electrotest::config::ConfigError::MissingLaunchCommand
     ));
 }
 
@@ -59,6 +67,27 @@ fn parses_attach_mode_with_endpoint_file() {
 }
 
 #[test]
+fn parses_attach_mode_with_endpoint() {
+    let raw = r#"
+        [app]
+        mode = "attach"
+        endpoint = "ws://127.0.0.1:9222/devtools/browser/123"
+
+        [paths]
+        features = ["features"]
+        steps = ["steps"]
+        artifacts = ".electrotest/artifacts"
+    "#;
+
+    let config = electrotest::config::from_str(raw).unwrap();
+    assert_eq!(config.app.mode.as_str(), "attach");
+    assert_eq!(
+        config.app.endpoint.as_deref(),
+        Some("ws://127.0.0.1:9222/devtools/browser/123")
+    );
+}
+
+#[test]
 fn rejects_attach_mode_without_endpoint_source() {
     let raw = r#"
         [app]
@@ -73,7 +102,7 @@ fn rejects_attach_mode_without_endpoint_source() {
     let error = electrotest::config::from_str(raw).unwrap_err();
     assert!(matches!(
         error,
-        electrotest::Error::Config(electrotest::config::ConfigError::MissingAttachEndpoint)
+        electrotest::config::ConfigError::MissingAttachEndpoint
     ));
 }
 
@@ -94,9 +123,7 @@ fn rejects_attach_mode_with_conflicting_endpoint_sources() {
     let error = electrotest::config::from_str(raw).unwrap_err();
     assert!(matches!(
         error,
-        electrotest::Error::Config(
-            electrotest::config::ConfigError::ConflictingAttachEndpointSources
-        )
+        electrotest::config::ConfigError::ConflictingAttachEndpointSources
     ));
 }
 
@@ -122,14 +149,12 @@ fn resolves_config_paths_relative_to_loaded_file() {
     )
     .unwrap();
 
-    let current_dir = std::env::current_dir().unwrap();
+    let _current_dir_guard = CurrentDirGuard(std::env::current_dir().unwrap());
     let other_dir = temp.path().join("elsewhere");
     fs::create_dir_all(&other_dir).unwrap();
     std::env::set_current_dir(&other_dir).unwrap();
 
     let config = electrotest::config::from_path(&config_path).unwrap();
-
-    std::env::set_current_dir(current_dir).unwrap();
 
     assert_eq!(
         config.paths.features[0].as_std_path(),

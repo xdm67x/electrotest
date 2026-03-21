@@ -8,13 +8,13 @@ use camino::Utf8Path;
 pub use self::types::{AppConfig, AppMode, Config, PathsConfig};
 pub use self::validate::ConfigError;
 
-pub fn from_str(raw: &str) -> Result<Config, crate::Error> {
+pub fn from_str(raw: &str) -> Result<Config, ConfigError> {
     let config: Config = toml::from_str(raw).map_err(ConfigError::from)?;
     validate::validate(&config)?;
     Ok(config)
 }
 
-pub fn from_path(path: &Path) -> Result<Config, crate::Error> {
+pub fn from_path(path: &Path) -> Result<Config, ConfigError> {
     let raw = std::fs::read_to_string(path)?;
     let mut config = from_str(&raw)?;
 
