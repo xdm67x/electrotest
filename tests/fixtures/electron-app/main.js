@@ -26,6 +26,7 @@ function createWindow(title) {
       });
       document.getElementById("open-settings").addEventListener("click", () => {
         status.textContent = "settings-requested";
+        window.open("electrotest://open-settings");
       });
     </script>
   `;
@@ -53,13 +54,22 @@ function createSettingsWindow() {
 }
 
 app.whenReady().then(() => {
+  app.on("web-contents-created", (_event, contents) => {
+    contents.setWindowOpenHandler(({ url }) => {
+      if (url === "electrotest://open-settings") {
+        createSettingsWindow();
+        return { action: "deny" };
+      }
+
+      return { action: "deny" };
+    });
+  });
+
   createWindow("Fixture App");
-  createSettingsWindow();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow("Fixture App");
-      createSettingsWindow();
     }
   });
 });

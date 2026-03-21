@@ -25,6 +25,9 @@ async fn fixture_harness_returns_paths_for_test_assets() {
     assert!(main_js.contains("id=\"launch\""));
     assert!(main_js.contains("id=\"open-settings\""));
     assert!(main_js.contains("Settings Window"));
+    assert!(main_js.contains("document.getElementById(\"open-settings\").addEventListener(\"click\", () => {"));
+    assert!(main_js.contains("createSettingsWindow();"));
+    assert!(!main_js.contains("app.whenReady().then(() => {\n  createWindow(\"Fixture App\");\n  createSettingsWindow();"));
 
     let sample_steps = fs::read_to_string(fixture.root.join("steps/sample.steps.ts")).unwrap();
     assert!(sample_steps.contains("the fixture window title should be {string}"));
