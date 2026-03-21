@@ -1,8 +1,8 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::{
     config::Config,
-    gherkin::{CompiledScenario, load_scenarios},
+    gherkin::{CompiledScenario, compile_str},
     runner::{RunError, artifacts, context::ExecutionContext},
     steps::Registry,
 };
@@ -125,4 +125,29 @@ async fn execute_scenario(
     }
 
     Ok(outputs)
+}
+
+fn load_scenarios(feature_paths: &[camino::Utf8PathBuf]) -> Result<Vec<CompiledScenario>, RunError> {
+    let mut scenarios = Vec::new();
+
+    for feature_path in feature_paths {
+        if feature_path.is_dir() {
+            for entry in std::fs::read_dir(feature_path)? {
+                let entry = entry?;
+                let path = entry.path();
+                if path.extension().and_then(|ext| ext.to_str()) == Some("feature") {
+                    scenarios.extend(load_scenarios_from_file(&path)?);
+                }
+            }
+        } else {
+            scenarios.extend(load_scenarios_from_file(Path::new(feature_path.as_str()))?);
+        }
+    }
+
+    Ok(scenarios)
+}
+
+fn load_scenarios_from_file(path: &Path) -> Result<Vec<CompiledScenario>, RunError> {
+    let raw = std::fs::read_to_string(path)?;
+    Ok(compile_str(&raw)?.scenarios)
 }

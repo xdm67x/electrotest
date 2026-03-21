@@ -16,8 +16,6 @@ pub enum RunError {
     Io(#[from] std::io::Error),
     #[error(transparent)]
     Gherkin(#[from] crate::gherkin::CompileError),
-    #[error(transparent)]
-    GherkinLoad(#[from] crate::gherkin::LoadError),
 }
 
 impl RunError {
