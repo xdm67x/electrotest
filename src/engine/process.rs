@@ -3,6 +3,8 @@ use tokio::io::AsyncWriteExt;
 use tokio::process::{ChildStdin, ChildStdout, Command};
 use tokio_util::codec::{FramedRead, LinesCodec, LinesCodecError};
 
+const SHUTDOWN_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(100);
+
 pub struct WorkerProcess {
     child: tokio::process::Child,
     stdin: ChildStdin,
@@ -72,7 +74,15 @@ impl WorkerProcess {
 
     pub async fn shutdown(&mut self) -> Result<(), WorkerProcessError> {
         self.stdin.shutdown().await?;
-        let _ = self.child.wait().await?;
+
+        if tokio::time::timeout(SHUTDOWN_TIMEOUT, self.child.wait())
+            .await
+            .is_err()
+        {
+            self.child.kill().await?;
+            let _ = self.child.wait().await?;
+        }
+
         Ok(())
     }
 }

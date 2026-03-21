@@ -15,15 +15,19 @@ async fn serializes_launch_and_attach_requests() {
         args: vec!["./fixture".into()],
     };
     let launch_json = serde_json::to_string(&launch).unwrap();
-    assert!(launch_json.contains("\"type\":\"launch_app\""));
-    assert!(launch_json.contains("\"command\":\"electron\""));
+    let decoded_launch: electrotest::engine::protocol::Request =
+        serde_json::from_str(&launch_json).unwrap();
+
+    assert_eq!(decoded_launch, launch);
 
     let attach = electrotest::engine::protocol::Request::AttachApp {
         endpoint: "http://127.0.0.1:9222".into(),
     };
     let attach_json = serde_json::to_string(&attach).unwrap();
-    assert!(attach_json.contains("\"type\":\"attach_app\""));
-    assert!(attach_json.contains("\"endpoint\":\"http://127.0.0.1:9222\""));
+    let decoded_attach: electrotest::engine::protocol::Request =
+        serde_json::from_str(&attach_json).unwrap();
+
+    assert_eq!(decoded_attach, attach);
 }
 
 #[tokio::test]
@@ -57,4 +61,17 @@ async fn rejects_malformed_worker_response() {
         if raw == "not-json"
     ));
     worker.shutdown().await.unwrap();
+}
+
+#[tokio::test]
+async fn shutdown_kills_worker_that_does_not_exit_on_eof() {
+    let mut command = tokio::process::Command::new("/bin/sh");
+    command.arg("-c").arg("sleep 30");
+
+    let mut worker = electrotest::engine::process::WorkerProcess::from_command(command).unwrap();
+
+    tokio::time::timeout(std::time::Duration::from_secs(1), worker.shutdown())
+        .await
+        .unwrap()
+        .unwrap();
 }
