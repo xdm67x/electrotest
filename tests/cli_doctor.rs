@@ -52,13 +52,16 @@ fn doctor_fails_when_node_is_missing() {
 fn doctor_fails_when_node_version_is_unsupported() {
     let temp = tempfile::tempdir().unwrap();
     let bin_dir = temp.path().join("bin");
+    let cache_dir = temp.path().join("cache");
     std::fs::create_dir_all(&bin_dir).unwrap();
     write_fake_node(&bin_dir, "v16.0.0");
+    write_worker_dependency(&cache_dir);
 
     Command::cargo_bin("electrotest")
         .unwrap()
         .current_dir(temp.path())
         .env("PATH", &bin_dir)
+        .env("ELECTROTEST_CACHE_DIR", &cache_dir)
         .arg("doctor")
         .assert()
         .failure()
@@ -93,6 +96,7 @@ fn doctor_fails_for_invalid_startup_config() {
     let cache_dir = temp.path().join("cache");
     std::fs::create_dir_all(&bin_dir).unwrap();
     write_fake_node(&bin_dir, "v20.0.0");
+    write_worker_dependency(&cache_dir);
     write_launch_config(temp.path(), "", "features", "steps");
     std::fs::create_dir_all(temp.path().join("features")).unwrap();
     std::fs::create_dir_all(temp.path().join("steps")).unwrap();
@@ -139,6 +143,7 @@ fn doctor_reports_missing_feature_path() {
     let cache_dir = temp.path().join("cache");
     std::fs::create_dir_all(&bin_dir).unwrap();
     write_fake_node(&bin_dir, "v20.0.0");
+    write_worker_dependency(&cache_dir);
     write_launch_config(
         temp.path(),
         "command = \"npm\"",
@@ -165,6 +170,7 @@ fn doctor_reports_missing_step_path() {
     let cache_dir = temp.path().join("cache");
     std::fs::create_dir_all(&bin_dir).unwrap();
     write_fake_node(&bin_dir, "v20.0.0");
+    write_worker_dependency(&cache_dir);
     write_launch_config(
         temp.path(),
         "command = \"npm\"",
