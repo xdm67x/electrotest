@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod config;
+pub mod engine;
 pub mod gherkin;
 pub mod steps;
 pub mod project {
