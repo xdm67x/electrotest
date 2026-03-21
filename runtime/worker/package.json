@@ -1,0 +1,14 @@
+{
+  "name": "electrotest-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node ./scripts/build.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0"
+  }
+}

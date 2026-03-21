@@ -31,6 +31,39 @@ async fn serializes_launch_and_attach_requests() {
 }
 
 #[tokio::test]
+async fn bootstraps_worker_runtime_into_cache() {
+    let cache = tempfile::tempdir().unwrap();
+    let runtime = electrotest::project::bootstrap::materialize_runtime(cache.path())
+        .await
+        .unwrap();
+
+    assert!(runtime.join("index.js").exists());
+}
+
+#[tokio::test]
+async fn starts_bootstrapped_worker_and_exchanges_ping() {
+    let cache = tempfile::tempdir().unwrap();
+    let runtime = electrotest::project::bootstrap::materialize_runtime(cache.path())
+        .await
+        .unwrap();
+    let runtime_root = runtime.parent().unwrap();
+
+    assert!(runtime_root.join("node_modules/playwright").exists());
+
+    let mut command = tokio::process::Command::new("node");
+    command.arg(runtime.join("index.js").as_str());
+
+    let mut worker = electrotest::engine::process::WorkerProcess::from_command(command).unwrap();
+    let response = worker
+        .request(&electrotest::engine::protocol::Request::Ping)
+        .await
+        .unwrap();
+
+    assert_eq!(response, electrotest::engine::protocol::Response::Pong);
+    worker.shutdown().await.unwrap();
+}
+
+#[tokio::test]
 async fn starts_worker_and_exchanges_ping() {
     let mut command = tokio::process::Command::new("/bin/sh");
     command
