@@ -19,8 +19,17 @@ async fn stores_screenshot_and_trace_when_step_fails() {
 
 #[tokio::test]
 async fn summarizes_missing_step_failures() {
-    let result = support::run_fixture("basic-launch.feature").await;
+    let result = support::run_fixture("missing-step.feature").await;
 
     assert!(!result.status.success());
     assert!(result.stdout.contains("0 scenario passed, 1 failed"));
+}
+
+#[tokio::test]
+async fn surfaces_unexpected_crashes_as_runner_errors() {
+    let result = support::run_fixture("basic-launch.feature").await;
+
+    assert!(!result.status.success());
+    assert!(result.stdout.contains("crash: unsupported non-custom step"));
+    assert!(!result.stdout.contains("0 scenario passed, 1 failed"));
 }

@@ -13,6 +13,7 @@ async fn fixture_harness_returns_paths_for_test_assets() {
         "features/multi-window.feature",
         "features/custom-step.feature",
         "features/failing-assertion.feature",
+        "features/missing-step.feature",
         "steps/sample.steps.ts",
     ] {
         assert!(
@@ -45,7 +46,7 @@ async fn executes_custom_typescript_step() {
 async fn fixture_helper_reports_real_failure_for_unsupported_step() {
     let result = support::run_fixture("basic-launch.feature").await;
     assert!(!result.status.success());
-    assert!(result.stdout.contains("0 scenario passed, 1 failed"));
+    assert!(result.stdout.contains("crash: unsupported non-custom step"));
 }
 
 #[tokio::test]
