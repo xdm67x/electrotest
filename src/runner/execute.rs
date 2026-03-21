@@ -31,6 +31,18 @@ impl RunRequest {
             app_title: "Fixture App".to_owned(),
         })
     }
+
+    pub async fn load_default() -> Result<Self, RunError> {
+        let config = crate::config::load_default()
+            .await
+            .map_err(|error| RunError::Config(error.to_string()))?;
+        crate::config::validate_paths(&config)
+            .map_err(|error| RunError::Config(error.to_string()))?;
+        crate::config::validate_startup(&config)
+            .map_err(|error| RunError::Config(error.to_string()))?;
+
+        Self::from_config(config).await
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

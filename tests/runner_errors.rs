@@ -16,3 +16,11 @@ async fn stores_screenshot_and_trace_when_step_fails() {
     assert!(result.artifact_dir.join("failure.png").exists());
     assert!(result.artifact_dir.join("trace.zip").exists());
 }
+
+#[tokio::test]
+async fn summarizes_missing_step_failures() {
+    let result = support::run_fixture("basic-launch.feature").await;
+
+    assert!(!result.status.success());
+    assert!(result.stdout.contains("0 scenario passed, 1 failed"));
+}

@@ -39,7 +39,11 @@ impl RunError {
     pub fn is_scenario_failure(&self) -> bool {
         matches!(
             self,
-            Self::Assertion(_) | Self::ElementNotFound(_) | Self::Timeout(_)
+            Self::Assertion(_)
+                | Self::ElementNotFound(_)
+                | Self::Timeout(_)
+                | Self::MissingStep(_)
+                | Self::Crash(_)
         )
     }
 }

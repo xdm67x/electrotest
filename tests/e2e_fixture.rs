@@ -45,7 +45,7 @@ async fn executes_custom_typescript_step() {
 async fn fixture_helper_reports_real_failure_for_unsupported_step() {
     let result = support::run_fixture("basic-launch.feature").await;
     assert!(!result.status.success());
-    assert!(result.stdout.contains("unsupported non-custom step"));
+    assert!(result.stdout.contains("0 scenario passed, 1 failed"));
 }
 
 #[tokio::test]
@@ -54,4 +54,15 @@ async fn test_command_returns_non_zero_on_failure() {
 
     assert!(!result.status.success());
     assert!(result.stdout.contains("1 scenario failed"));
+}
+
+#[tokio::test]
+async fn test_command_normalizes_config_failures_into_runner_errors() {
+    let result = support::run_with_config(
+        "[app]\nmode = \"launch\"\n\n[paths]\nfeatures = [\"features\"]\nsteps = [\"steps\"]\nartifacts = \".electrotest/artifacts\"\n",
+    )
+    .await;
+
+    assert!(!result.status.success());
+    assert!(result.stdout.contains("config error: missing launch command"));
 }

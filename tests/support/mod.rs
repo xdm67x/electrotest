@@ -37,10 +37,27 @@ pub async fn run_attach_fixture(feature_name: &str) -> FixtureRun {
     run_electrotest_fixture(feature_name, Some("tests/fixtures/attach/electrotest.toml")).await
 }
 
+pub async fn run_with_config(raw_config: &str) -> FixtureRun {
+    ensure_fixture_dependencies().await;
+    run_electrotest_project(raw_config, None, None).await
+}
+
 async fn ensure_fixture_dependencies() {}
 
 async fn run_electrotest_fixture(feature_name: &str, _config_path: Option<&str>) -> FixtureRun {
     let fixture = fixture_project().await;
+    let raw_config = format!(
+        "[app]\nmode = \"attach\"\nendpoint = \"ws://127.0.0.1:9222/devtools/browser/fixture\"\n\n[paths]\nfeatures = [\"features/{feature_name}\"]\nsteps = [\"steps/sample.steps.ts\"]\nartifacts = \".electrotest/artifacts\"\n"
+    );
+
+    run_electrotest_project(&raw_config, Some((feature_name, fixture.root.join("features").join(feature_name))), Some(fixture.root.join("steps/sample.steps.ts"))).await
+}
+
+async fn run_electrotest_project(
+    raw_config: &str,
+    feature: Option<(&str, PathBuf)>,
+    step_file: Option<PathBuf>,
+) -> FixtureRun {
     let temp = tempfile::tempdir().unwrap();
     let project_root = temp.keep();
     let artifact_dir = project_root.join(".electrotest/artifacts");
@@ -50,20 +67,13 @@ async fn run_electrotest_fixture(feature_name: &str, _config_path: Option<&str>)
     std::fs::create_dir_all(&step_dir).unwrap();
     std::fs::create_dir_all(&artifact_dir).unwrap();
 
-    std::fs::copy(
-        fixture.root.join("features").join(feature_name),
-        feature_dir.join(feature_name),
-    )
-    .unwrap();
-    std::fs::copy(
-        fixture.root.join("steps/sample.steps.ts"),
-        step_dir.join("sample.steps.ts"),
-    )
-    .unwrap();
+    if let Some((feature_name, feature_path)) = feature {
+        std::fs::copy(feature_path, feature_dir.join(feature_name)).unwrap();
+    }
+    if let Some(step_file) = step_file {
+        std::fs::copy(step_file, step_dir.join("sample.steps.ts")).unwrap();
+    }
 
-    let raw_config = format!(
-        "[app]\nmode = \"attach\"\nendpoint = \"ws://127.0.0.1:9222/devtools/browser/fixture\"\n\n[paths]\nfeatures = [\"features/{feature_name}\"]\nsteps = [\"steps/sample.steps.ts\"]\nartifacts = \".electrotest/artifacts\"\n"
-    );
     std::fs::write(project_root.join("electrotest.toml"), raw_config).unwrap();
 
     let assert = Command::cargo_bin("electrotest")
