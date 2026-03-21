@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand};
 
 mod commands {
+    pub mod doctor;
     pub mod init;
 }
 
@@ -32,6 +33,7 @@ pub async fn run() -> Result<(), crate::Error> {
 
     match cli.command {
         Some(Commands::Init(args)) => commands::init::run(&args.path).await,
+        Some(Commands::Doctor) => commands::doctor::run().await,
         _ => Ok(()),
     }
 }

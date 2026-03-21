@@ -8,6 +8,8 @@ use camino::Utf8Path;
 pub use self::types::{AppConfig, AppMode, Config, PathsConfig};
 pub use self::validate::ConfigError;
 
+const DEFAULT_CONFIG_FILE: &str = "electrotest.toml";
+
 pub fn from_str(raw: &str) -> Result<Config, ConfigError> {
     let config: Config = toml::from_str(raw).map_err(ConfigError::from)?;
     validate::validate(&config)?;
@@ -23,6 +25,23 @@ pub fn from_path(path: &Path) -> Result<Config, ConfigError> {
 
     resolve_paths(&mut config, base);
     Ok(config)
+}
+
+pub async fn load_default() -> Result<Config, ConfigError> {
+    let path = Path::new(DEFAULT_CONFIG_FILE);
+    if !path.exists() {
+        return Err(ConfigError::MissingConfigFile);
+    }
+
+    from_path(path)
+}
+
+pub fn validate_paths(config: &Config) -> Result<(), ConfigError> {
+    validate::validate_paths(config)
+}
+
+pub fn validate_startup(config: &Config) -> Result<(), ConfigError> {
+    validate::validate_startup(config)
 }
 
 fn resolve_paths(config: &mut Config, base: &Utf8Path) {
