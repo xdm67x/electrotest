@@ -26,10 +26,9 @@ async fn summarizes_missing_step_failures() {
 }
 
 #[tokio::test]
-async fn surfaces_unexpected_crashes_as_runner_errors() {
+async fn launch_fixture_runs_without_runner_crash() {
     let result = support::run_fixture("basic-launch.feature").await;
 
-    assert!(!result.status.success());
-    assert!(result.stdout.contains("crash: unsupported non-custom step"));
-    assert!(!result.stdout.contains("0 scenario passed, 1 failed"));
+    assert!(result.status.success());
+    assert!(result.stdout.contains("1 scenario passed, 0 failed"));
 }

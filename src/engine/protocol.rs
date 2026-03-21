@@ -11,6 +11,10 @@ pub enum Request {
     AttachApp {
         endpoint: String,
     },
+    SwitchWindow {
+        target: WindowTarget,
+    },
+    CurrentWindowTitle,
     Click {
         window_id: String,
         locator: Vec<LocatorPayload>,
@@ -24,11 +28,33 @@ pub enum Request {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Response {
     Pong,
-    AppLaunched { window_id: String },
-    AppAttached { window_id: String },
+    AppLaunched {
+        window_id: String,
+    },
+    AppAttached {
+        window_id: String,
+    },
+    WindowSwitched {
+        window_id: String,
+        description: String,
+    },
+    CurrentWindowTitle {
+        title: String,
+    },
     Clicked,
-    ScreenshotTaken { path: String },
-    Error { message: String },
+    ScreenshotTaken {
+        path: String,
+    },
+    Error {
+        message: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum WindowTarget {
+    Title { value: String },
+    Index { value: usize },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -47,6 +73,15 @@ impl From<crate::steps::Locator> for LocatorPayload {
             crate::steps::Locator::TestId(value) => Self::TestId { value },
             crate::steps::Locator::RoleName { role, name } => Self::RoleName { role, name },
             crate::steps::Locator::Text(value) => Self::Text { value },
+        }
+    }
+}
+
+impl From<crate::steps::WindowTarget> for WindowTarget {
+    fn from(value: crate::steps::WindowTarget) -> Self {
+        match value {
+            crate::steps::WindowTarget::Title(value) => Self::Title { value },
+            crate::steps::WindowTarget::Index(value) => Self::Index { value },
         }
     }
 }

@@ -4,6 +4,22 @@ pub struct StepTarget {
     pub explicit_selector: Option<String>,
 }
 
+impl StepTarget {
+    pub fn from_capture(label: String) -> Self {
+        let explicit_selector = looks_like_selector(&label).then(|| label.clone());
+        Self {
+            label,
+            explicit_selector,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum WindowTarget {
+    Title(String),
+    Index(usize),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Locator {
     Explicit(String),
@@ -32,4 +48,8 @@ pub fn normalize_target(raw: StepTarget) -> Vec<Locator> {
     locators.push(Locator::Text(label));
 
     locators
+}
+
+fn looks_like_selector(value: &str) -> bool {
+    value.starts_with('#') || value.starts_with('.') || value.starts_with('[')
 }

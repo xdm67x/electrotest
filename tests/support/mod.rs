@@ -1,9 +1,15 @@
 #![allow(dead_code)]
 
-use std::path::PathBuf;
-use std::process::ExitStatus;
+use std::path::{Path, PathBuf};
+use std::process::{ExitStatus, Stdio};
+use std::sync::{Mutex, OnceLock};
 
 use assert_cmd::Command;
+
+fn fixture_install_lock() -> &'static Mutex<()> {
+    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+    LOCK.get_or_init(|| Mutex::new(()))
+}
 
 pub async fn fixture_project() -> FixtureProject {
     FixtureProject::from_repo_paths("tests/fixtures").await
@@ -29,12 +35,12 @@ pub struct FixtureRun {
 
 pub async fn run_fixture(feature_name: &str) -> FixtureRun {
     ensure_fixture_dependencies().await;
-    run_electrotest_fixture(feature_name, None).await
+    run_launch_fixture(feature_name).await
 }
 
 pub async fn run_attach_fixture(feature_name: &str) -> FixtureRun {
     ensure_fixture_dependencies().await;
-    run_electrotest_fixture(feature_name, Some("tests/fixtures/attach/electrotest.toml")).await
+    run_attach_fixture_project(feature_name).await
 }
 
 pub async fn run_with_config(raw_config: &str) -> FixtureRun {
@@ -42,15 +48,91 @@ pub async fn run_with_config(raw_config: &str) -> FixtureRun {
     run_electrotest_project(raw_config, None, None).await
 }
 
-async fn ensure_fixture_dependencies() {}
+pub fn copy_fixture_file(source: &Path, destination: &Path) {
+    let source = std::fs::canonicalize(source).unwrap_or_else(|_| source.to_path_buf());
+    let destination = std::fs::canonicalize(destination).unwrap_or_else(|_| destination.to_path_buf());
 
-async fn run_electrotest_fixture(feature_name: &str, _config_path: Option<&str>) -> FixtureRun {
+    if source == destination {
+        return;
+    }
+
+    if let Some(parent) = destination.parent() {
+        std::fs::create_dir_all(parent).unwrap();
+    }
+    std::fs::copy(&source, &destination).unwrap();
+}
+
+async fn ensure_fixture_dependencies() {
+    let _lock = fixture_install_lock().lock().unwrap();
+    install_npm_dependencies(&fixture_root().join("electron-app"));
+    install_npm_dependencies(&fixture_root().join("attach"));
+}
+
+async fn run_launch_fixture(feature_name: &str) -> FixtureRun {
     let fixture = fixture_project().await;
+    let electron_bin = fixture
+        .root
+        .join("electron-app/node_modules/.bin/electron");
     let raw_config = format!(
-        "[app]\nmode = \"attach\"\nendpoint = \"ws://127.0.0.1:9222/devtools/browser/fixture\"\n\n[paths]\nfeatures = [\"features/{feature_name}\"]\nsteps = [\"steps/sample.steps.ts\"]\nartifacts = \".electrotest/artifacts\"\n"
+        "[app]\nmode = \"launch\"\ncommand = {:?}\nargs = [{:?}]\n\n[paths]\nfeatures = [\"features/{feature_name}\"]\nsteps = [\"steps/sample.steps.ts\"]\nartifacts = \".electrotest/artifacts\"\n",
+        electron_bin.to_string_lossy(),
+        fixture.root.join("electron-app").to_string_lossy(),
     );
 
-    run_electrotest_project(&raw_config, Some((feature_name, fixture.root.join("features").join(feature_name))), Some(fixture.root.join("steps/sample.steps.ts"))).await
+    run_electrotest_project(
+        &raw_config,
+        Some((feature_name, fixture.root.join("features").join(feature_name))),
+        Some(fixture.root.join("steps/sample.steps.ts")),
+    )
+    .await
+}
+
+async fn run_attach_fixture_project(feature_name: &str) -> FixtureRun {
+    let fixture = fixture_project().await;
+    let attach_fixture_root = fixture.root.join("attach");
+    let project_root = temp_project_root();
+    let artifact_dir = project_root.join(".electrotest/artifacts");
+    let endpoint_dir = project_root.join(".electrotest");
+    let endpoint_file = endpoint_dir.join("attach-endpoint.txt");
+    let feature_dir = project_root.join("features");
+    let step_dir = project_root.join("steps");
+    std::fs::create_dir_all(&artifact_dir).unwrap();
+    std::fs::create_dir_all(&endpoint_dir).unwrap();
+    std::fs::create_dir_all(&feature_dir).unwrap();
+    std::fs::create_dir_all(&step_dir).unwrap();
+
+    copy_fixture_file(
+        &fixture.root.join("features").join(feature_name),
+        &feature_dir.join(feature_name),
+    );
+    copy_fixture_file(
+        &fixture.root.join("steps/sample.steps.ts"),
+        &step_dir.join("sample.steps.ts"),
+    );
+
+    let raw_config = format!(
+        "[app]\nmode = \"attach\"\nendpoint_file = \".electrotest/attach-endpoint.txt\"\n\n[paths]\nfeatures = [\"features/{feature_name}\"]\nsteps = [\"steps/sample.steps.ts\"]\nartifacts = \".electrotest/artifacts\"\n"
+    );
+    std::fs::write(project_root.join("electrotest.toml"), raw_config).unwrap();
+
+    let mut child = std::process::Command::new("node")
+        .arg(attach_fixture_root.join("start-attached-session.mjs"))
+        .arg(&endpoint_file)
+        .current_dir(workspace_root())
+        .stdout(Stdio::inherit())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .unwrap();
+
+    wait_for_file(&endpoint_file);
+    let endpoint = std::fs::read_to_string(&endpoint_file).unwrap();
+    wait_for_cdp_endpoint(endpoint.trim()).await;
+
+    let result = run_command_in_project(&project_root, artifact_dir.clone());
+
+    let _ = child.kill();
+    let _ = child.wait();
+    result
 }
 
 async fn run_electrotest_project(
@@ -58,8 +140,7 @@ async fn run_electrotest_project(
     feature: Option<(&str, PathBuf)>,
     step_file: Option<PathBuf>,
 ) -> FixtureRun {
-    let temp = tempfile::tempdir().unwrap();
-    let project_root = temp.keep();
+    let project_root = temp_project_root();
     let artifact_dir = project_root.join(".electrotest/artifacts");
     let feature_dir = project_root.join("features");
     let step_dir = project_root.join("steps");
@@ -68,20 +149,26 @@ async fn run_electrotest_project(
     std::fs::create_dir_all(&artifact_dir).unwrap();
 
     if let Some((feature_name, feature_path)) = feature {
-        std::fs::copy(feature_path, feature_dir.join(feature_name)).unwrap();
+        copy_fixture_file(&feature_path, &feature_dir.join(feature_name));
     }
     if let Some(step_file) = step_file {
-        std::fs::copy(step_file, step_dir.join("sample.steps.ts")).unwrap();
+        copy_fixture_file(&step_file, &step_dir.join("sample.steps.ts"));
     }
 
     std::fs::write(project_root.join("electrotest.toml"), raw_config).unwrap();
+    run_command_in_project(&project_root, artifact_dir)
+}
 
+fn run_command_in_project(project_root: &Path, artifact_dir: PathBuf) -> FixtureRun {
     let assert = Command::cargo_bin("electrotest")
         .unwrap()
         .current_dir(project_root)
         .arg("test")
         .assert();
-    let output = assert.get_output();
+    fixture_run_from_assert(assert.get_output(), artifact_dir)
+}
+
+fn fixture_run_from_assert(output: &std::process::Output, artifact_dir: PathBuf) -> FixtureRun {
     let status = output.status;
     let mut stdout = String::from_utf8_lossy(&output.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -97,4 +184,64 @@ async fn run_electrotest_project(
         stdout,
         artifact_dir,
     }
+}
+
+fn install_npm_dependencies(dir: &Path) {
+    let package_json = dir.join("package.json");
+    if !package_json.exists() {
+        return;
+    }
+
+    let node_modules = dir.join("node_modules");
+    if node_modules.exists() {
+        return;
+    }
+
+    let status = std::process::Command::new("npm")
+        .arg("install")
+        .current_dir(dir)
+        .status()
+        .unwrap();
+    assert!(status.success(), "npm install failed in {}", dir.display());
+}
+
+fn wait_for_file(path: &Path) {
+    for _ in 0..100 {
+        if path.exists() {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    panic!("timed out waiting for file: {}", path.display());
+}
+
+async fn wait_for_cdp_endpoint(endpoint: &str) {
+    let url = format!("{}/json/version", endpoint.trim_end_matches('/'));
+    for _ in 0..100 {
+        let status = tokio::process::Command::new("node")
+            .arg("-e")
+            .arg(format!(
+                "fetch({url:?}).then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))"
+            ))
+            .status()
+            .await
+            .unwrap();
+        if status.success() {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+    }
+    panic!("timed out waiting for CDP endpoint: {endpoint}");
+}
+
+fn fixture_root() -> PathBuf {
+    workspace_root().join("tests/fixtures")
+}
+
+fn workspace_root() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+}
+
+fn temp_project_root() -> PathBuf {
+    tempfile::tempdir().unwrap().keep()
 }

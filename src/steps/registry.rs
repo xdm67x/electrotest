@@ -1,19 +1,29 @@
-use crate::steps::{builtin, selector::StepTarget};
+use crate::steps::{
+    builtin,
+    selector::{StepTarget, WindowTarget},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedStep {
     action_name: &'static str,
     target: Option<StepTarget>,
+    window_target: Option<WindowTarget>,
 }
 
 impl ResolvedStep {
     pub fn click(label: String) -> Self {
         Self {
             action_name: "click",
-            target: Some(StepTarget {
-                label,
-                explicit_selector: None,
-            }),
+            target: Some(StepTarget::from_capture(label)),
+            window_target: None,
+        }
+    }
+
+    pub fn switch_window(window_target: WindowTarget) -> Self {
+        Self {
+            action_name: "switch_window",
+            target: None,
+            window_target: Some(window_target),
         }
     }
 
@@ -21,6 +31,7 @@ impl ResolvedStep {
         Self {
             action_name: "custom",
             target: None,
+            window_target: None,
         }
     }
 
@@ -30,6 +41,10 @@ impl ResolvedStep {
 
     pub fn target(&self) -> Option<&StepTarget> {
         self.target.as_ref()
+    }
+
+    pub fn window_target(&self) -> Option<&WindowTarget> {
+        self.window_target.as_ref()
     }
 }
 

@@ -1,7 +1,7 @@
 const { app, BrowserWindow } = require("electron");
 
 function fixtureHtml(title, body) {
-  return `data:text/html,<!DOCTYPE html><html><body>${body}</body></html>`;
+  return `data:text/html,<!DOCTYPE html><html><head><title>${title}</title></head><body>${body}</body></html>`;
 }
 
 function createWindow(title) {
@@ -40,13 +40,13 @@ function createSettingsWindow() {
     width: 480,
     height: 320,
     show: false,
-    title: "Settings Window",
+    title: "Preferences",
   });
 
   win.loadURL(
     fixtureHtml(
-      "Settings Window",
-      '<main><h1>Settings Window</h1><p id="settings-status">opened</p></main>'
+      "Preferences",
+      '<main><h1>Preferences</h1><p id="settings-status">opened</p></main>'
     )
   );
 

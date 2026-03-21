@@ -20,6 +20,102 @@ impl PlaywrightEngine {
         &mut self.worker
     }
 
+    pub async fn shutdown(&mut self) -> Result<(), crate::Error> {
+        self.worker.shutdown().await.map_err(worker_error)
+    }
+
+    pub async fn launch(
+        &mut self,
+        command: &str,
+        args: &[String],
+    ) -> Result<String, crate::Error> {
+        match self
+            .worker
+            .request(&crate::engine::protocol::Request::LaunchApp {
+                command: command.to_owned(),
+                args: args.to_vec(),
+            })
+            .await
+            .map_err(worker_error)?
+        {
+            crate::engine::protocol::Response::AppLaunched { window_id } => Ok(window_id),
+            crate::engine::protocol::Response::Error { message } => {
+                Err(std::io::Error::other(message).into())
+            }
+            other => Err(unexpected_response("launch", other)),
+        }
+    }
+
+    pub async fn attach(&mut self, endpoint: &str) -> Result<String, crate::Error> {
+        match self
+            .worker
+            .request(&crate::engine::protocol::Request::AttachApp {
+                endpoint: endpoint.to_owned(),
+            })
+            .await
+            .map_err(worker_error)?
+        {
+            crate::engine::protocol::Response::AppAttached { window_id } => Ok(window_id),
+            crate::engine::protocol::Response::Error { message } => {
+                Err(std::io::Error::other(message).into())
+            }
+            other => Err(unexpected_response("attach", other)),
+        }
+    }
+
+    pub async fn click(&mut self, locator: Vec<crate::steps::Locator>) -> Result<(), crate::Error> {
+        match self
+            .worker
+            .request(&crate::engine::protocol::Request::Click {
+                window_id: "active".to_owned(),
+                locator: locator.into_iter().map(Into::into).collect(),
+            })
+            .await
+            .map_err(worker_error)?
+        {
+            crate::engine::protocol::Response::Clicked => Ok(()),
+            crate::engine::protocol::Response::Error { message } => {
+                Err(std::io::Error::other(message).into())
+            }
+            other => Err(unexpected_response("click", other)),
+        }
+    }
+
+    pub async fn switch_window(
+        &mut self,
+        target: crate::steps::WindowTarget,
+    ) -> Result<String, crate::Error> {
+        match self
+            .worker
+            .request(&crate::engine::protocol::Request::SwitchWindow {
+                target: target.into(),
+            })
+            .await
+            .map_err(worker_error)?
+        {
+            crate::engine::protocol::Response::WindowSwitched { description, .. } => Ok(description),
+            crate::engine::protocol::Response::Error { message } => {
+                Err(std::io::Error::other(message).into())
+            }
+            other => Err(unexpected_response("switch_window", other)),
+        }
+    }
+
+    pub async fn current_window_title(&mut self) -> Result<String, crate::Error> {
+        match self
+            .worker
+            .request(&crate::engine::protocol::Request::CurrentWindowTitle)
+            .await
+            .map_err(worker_error)?
+        {
+            crate::engine::protocol::Response::CurrentWindowTitle { title } => Ok(title),
+            crate::engine::protocol::Response::Error { message } => {
+                Err(std::io::Error::other(message).into())
+            }
+            other => Err(unexpected_response("current_window_title", other)),
+        }
+    }
+
     pub async fn load_custom_step_patterns(step_paths: &[PathBuf]) -> Result<Vec<String>, crate::Error> {
         let script = runtime_loader_script().await?;
         let payload = serde_json::to_string(&step_paths_as_strings(step_paths))?;
@@ -108,6 +204,14 @@ impl PlaywrightEngine {
             succeeded: true,
         })
     }
+}
+
+fn unexpected_response(context: &str, response: crate::engine::protocol::Response) -> crate::Error {
+    std::io::Error::other(format!("unexpected {context} response: {response:?}")).into()
+}
+
+fn worker_error(error: crate::engine::process::WorkerProcessError) -> crate::Error {
+    std::io::Error::other(error.to_string()).into()
 }
 
 async fn runtime_loader_script() -> Result<String, crate::Error> {
