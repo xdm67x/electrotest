@@ -49,6 +49,7 @@ impl FakeWorkerEnvironment {
         let bin_dir = tempfile::tempdir().unwrap();
         let npm_log = tempfile::NamedTempFile::new().unwrap();
         write_fake_npm(bin_dir.path());
+        write_fake_node(bin_dir.path());
 
         let original_path = std::env::var_os("PATH").unwrap_or_default();
         let path = if original_path.is_empty() {
@@ -89,6 +90,31 @@ fn write_fake_npm(dir: &Path) {
         let mut permissions = std::fs::metadata(&npm_path).unwrap().permissions();
         permissions.set_mode(0o755);
         std::fs::set_permissions(&npm_path, permissions).unwrap();
+    }
+}
+
+fn write_fake_node(dir: &Path) {
+    let node_path = dir.join("node");
+    std::fs::write(
+        &node_path,
+        "#!/bin/sh
+if [ ! -f \"$1\" ]; then
+  echo \"missing worker entrypoint: $1\" >&2
+  exit 1
+fi
+IFS= read -r _
+printf '{\"type\":\"pong\"}\\n'
+",
+    )
+    .unwrap();
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+
+        let mut permissions = std::fs::metadata(&node_path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(&node_path, permissions).unwrap();
     }
 }
 
@@ -169,10 +195,8 @@ async fn starts_bootstrapped_worker_and_exchanges_ping() {
     assert!(install_log.lines().any(|line| line == "install"));
     assert!(install_log.lines().any(|line| line == "run build"));
 
-    let mut command = tokio::process::Command::new("/bin/sh");
-    command
-        .arg("-c")
-        .arg("IFS= read -r _; printf '{\"type\":\"pong\"}\\n'");
+    let mut command = tokio::process::Command::new("node");
+    command.arg(runtime.join("index.js").as_str());
 
     let mut worker = electrotest::engine::process::WorkerProcess::from_command(command).unwrap();
     let response = worker
