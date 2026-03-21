@@ -1,5 +1,6 @@
 pub mod cli;
 pub mod config;
+pub mod gherkin;
 pub mod project {
     pub mod bootstrap;
     pub mod templates;
