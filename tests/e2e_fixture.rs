@@ -56,6 +56,15 @@ async fn attach_mode_can_run_against_existing_fixture_app() {
     assert!(result.status.success());
 }
 
+#[tokio::test]
+async fn attach_fixture_cleans_up_electron_processes() {
+    let result = support::run_attach_fixture("attach-mode.feature").await;
+
+    assert!(result.status.success());
+
+    assert_fixture_electron_process_count(result.app_root.as_ref().unwrap(), 0);
+}
+
 #[test]
 fn fixture_support_skips_same_path_copy_to_protect_source_files() {
     let temp = tempfile::tempdir().unwrap();
@@ -131,14 +140,11 @@ async fn test_command_normalizes_config_failures_into_runner_errors() {
 
 #[tokio::test]
 async fn launch_fixture_cleans_up_electron_processes() {
-    let before = fixture_electron_process_count();
-
     let result = support::run_fixture("basic-launch.feature").await;
 
     assert!(result.status.success());
 
-    let after = fixture_electron_process_count();
-    assert_eq!(after, before, "fixture Electron processes leaked: before={before}, after={after}");
+    assert_fixture_electron_process_count(result.app_root.as_ref().unwrap(), 0);
 }
 
 #[tokio::test]
@@ -160,14 +166,33 @@ async fn fixture_runs_do_not_write_dependency_artifacts_into_tracked_fixtures() 
     assert!(!attach_lockfile.exists(), "tracked attach package-lock.json should not be created");
 }
 
-fn fixture_electron_process_count() -> usize {
+fn assert_fixture_electron_process_count(app_root: &std::path::Path, expected: usize) {
+    for _ in 0..50 {
+        let count = fixture_electron_process_count(app_root);
+        if count == expected {
+            return;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+
+    let actual = fixture_electron_process_count(app_root);
+    assert_eq!(actual, expected, "fixture Electron processes leaked for {}", app_root.display());
+}
+
+fn fixture_electron_process_count(app_root: &std::path::Path) -> usize {
     let output = StdCommand::new("ps")
         .args(["-Ao", "command"])
         .output()
         .unwrap();
     let stdout = String::from_utf8_lossy(&output.stdout);
+    let app_root = app_root.to_string_lossy();
     stdout
         .lines()
-        .filter(|line| line.contains("tests/fixtures/electron-app"))
+        .filter(|line| {
+            line.contains(app_root.as_ref())
+                && (line.contains("node_modules/.bin/electron")
+                    || line.contains("Electron.app/Contents/MacOS/Electron")
+                    || line.contains("Electron Helper"))
+        })
         .count()
 }

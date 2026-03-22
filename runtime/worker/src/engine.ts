@@ -3,6 +3,7 @@ import type { LocatorPayload, Request, Response, WindowTarget } from "./protocol
 
 declare const process: {
   on(event: "exit", handler: () => void): void;
+  kill(pid: number, signal?: string): void;
 };
 
 type SessionState = {
@@ -10,7 +11,7 @@ type SessionState = {
   context: BrowserContext | null;
   pages: Page[];
   activePage: Page | null;
-  launchedChild: { kill(signal?: string): void } | null;
+  launchedChild: { pid: number } | null;
 };
 
 const state: SessionState = {
@@ -57,15 +58,12 @@ async function launchApp(command: string, args: string[]): Promise<Response> {
   const port = await reservePort();
   const childProcess = await importNodeModule("node:child_process");
   const child = childProcess.spawn(command, [...args, `--remote-debugging-port=${port}`], {
+    detached: true,
     stdio: "ignore",
   });
   state.launchedChild = child;
   process.on("exit", () => {
-    try {
-      child.kill("SIGTERM");
-    } catch {
-      // best-effort cleanup
-    }
+    terminateProcessGroup(child.pid);
   });
 
   state.browser = await connectToEndpoint(`http://127.0.0.1:${port}`);
@@ -269,12 +267,20 @@ async function stopLaunchedChild(): Promise<void> {
     return;
   }
 
-  try {
-    state.launchedChild.kill("SIGTERM");
-  } catch {
-    // best-effort cleanup
-  }
+  terminateProcessGroup(state.launchedChild.pid);
   state.launchedChild = null;
+}
+
+function terminateProcessGroup(pid: number): void {
+  try {
+    process.kill(-pid, "SIGTERM");
+  } catch {
+    try {
+      process.kill(pid, "SIGTERM");
+    } catch {
+      // best-effort cleanup
+    }
+  }
 }
 
 async function closeApp(): Promise<Response> {

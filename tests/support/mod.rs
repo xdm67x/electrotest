@@ -31,6 +31,7 @@ pub struct FixtureRun {
     pub status: ExitStatus,
     pub stdout: String,
     pub artifact_dir: PathBuf,
+    pub app_root: Option<PathBuf>,
 }
 
 pub struct PreparedAttachFixture {
@@ -54,7 +55,7 @@ pub async fn run_attach_fixture(feature_name: &str) -> FixtureRun {
 
 pub async fn run_with_config(raw_config: &str) -> FixtureRun {
     ensure_fixture_dependencies().await;
-    run_electrotest_project(raw_config, None, None).await
+    run_electrotest_project(raw_config, None, None, None).await
 }
 
 pub fn copy_fixture_file(source: &Path, destination: &Path) {
@@ -89,6 +90,7 @@ async fn run_launch_fixture(feature_name: &str) -> FixtureRun {
         &raw_config,
         Some((feature_name, fixture.root.join("features").join(feature_name))),
         Some(fixture.root.join("steps/sample.steps.ts")),
+        Some(fixture_app_root),
     )
     .await
 }
@@ -150,10 +152,10 @@ pub async fn run_prepared_attach_fixture(prepared: PreparedAttachFixture) -> Fix
     let result = run_command_in_project(
         &prepared.project_root.join("attach"),
         prepared.artifact_dir.clone(),
+        Some(prepared.fixture_app_root.clone()),
     );
 
-    let _ = child.kill();
-    let _ = child.wait();
+    terminate_child(&mut child);
     result
 }
 
@@ -161,6 +163,7 @@ async fn run_electrotest_project(
     raw_config: &str,
     feature: Option<(&str, PathBuf)>,
     step_file: Option<PathBuf>,
+    app_root: Option<PathBuf>,
 ) -> FixtureRun {
     let project_root = temp_project_root();
     let artifact_dir = project_root.join(".electrotest/artifacts");
@@ -178,19 +181,23 @@ async fn run_electrotest_project(
     }
 
     std::fs::write(project_root.join("electrotest.toml"), raw_config).unwrap();
-    run_command_in_project(&project_root, artifact_dir)
+    run_command_in_project(&project_root, artifact_dir, app_root)
 }
 
-fn run_command_in_project(project_root: &Path, artifact_dir: PathBuf) -> FixtureRun {
+fn run_command_in_project(project_root: &Path, artifact_dir: PathBuf, app_root: Option<PathBuf>) -> FixtureRun {
     let assert = Command::cargo_bin("electrotest")
         .unwrap()
         .current_dir(project_root)
         .arg("test")
         .assert();
-    fixture_run_from_assert(assert.get_output(), artifact_dir)
+    fixture_run_from_assert(assert.get_output(), artifact_dir, app_root)
 }
 
-fn fixture_run_from_assert(output: &std::process::Output, artifact_dir: PathBuf) -> FixtureRun {
+fn fixture_run_from_assert(
+    output: &std::process::Output,
+    artifact_dir: PathBuf,
+    app_root: Option<PathBuf>,
+) -> FixtureRun {
     let status = output.status;
     let mut stdout = String::from_utf8_lossy(&output.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&output.stderr);
@@ -205,6 +212,7 @@ fn fixture_run_from_assert(output: &std::process::Output, artifact_dir: PathBuf)
         status,
         stdout,
         artifact_dir,
+        app_root,
     }
 }
 
@@ -269,6 +277,25 @@ fn wait_for_file(path: &Path) {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
     panic!("timed out waiting for file: {}", path.display());
+}
+
+fn terminate_child(child: &mut std::process::Child) {
+    #[cfg(unix)]
+    {
+        let _ = std::process::Command::new("kill")
+            .args(["-TERM", &child.id().to_string()])
+            .status();
+
+        for _ in 0..20 {
+            if child.try_wait().unwrap().is_some() {
+                return;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+    }
+
+    let _ = child.kill();
+    let _ = child.wait();
 }
 
 async fn wait_for_cdp_endpoint(endpoint: &str) {

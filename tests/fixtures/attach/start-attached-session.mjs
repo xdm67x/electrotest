@@ -10,12 +10,30 @@ const child = spawn(
   `${fixtureAppRoot}/node_modules/.bin/electron`,
   [fixtureAppRoot, `--remote-debugging-port=${port}`],
   {
+    detached: true,
     stdio: "inherit",
   },
 );
 
 fs.writeFileSync(endpointFile, `http://127.0.0.1:${port}`);
-process.on("exit", () => child.kill("SIGTERM"));
+
+function cleanup() {
+  try {
+    process.kill(-child.pid, "SIGTERM");
+  } catch {
+    // best-effort cleanup
+  }
+}
+
+process.on("exit", cleanup);
+process.on("SIGTERM", () => {
+  cleanup();
+  process.exit(0);
+});
+process.on("SIGINT", () => {
+  cleanup();
+  process.exit(0);
+});
 
 function reservePort() {
   return new Promise((resolve, reject) => {
