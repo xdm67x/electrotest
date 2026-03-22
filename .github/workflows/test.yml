@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   unit:
     runs-on: ubuntu-latest
@@ -20,5 +23,7 @@ jobs:
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - uses: taiki-e/install-action@nextest
+
       - name: Run unit tests
-        run: xvfb-run -a cargo test
+        run: xvfb-run -a cargo nextest run

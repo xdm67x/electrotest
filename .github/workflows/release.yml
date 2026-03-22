@@ -8,6 +8,9 @@ on:
 permissions:
   contents: read
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
   verify-version:
     runs-on: ubuntu-latest
@@ -68,8 +71,10 @@ jobs:
       - name: Install stable Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - uses: taiki-e/install-action@nextest
+
       - name: Run cargo test
-        run: xvfb-run -a cargo test
+        run: xvfb-run -a cargo nextest run
 
   build:
     needs:
