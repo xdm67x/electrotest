@@ -16,7 +16,7 @@ jobs:
       release_version: ${{ steps.version.outputs.release_version }}
     steps:
       - name: Check out tagged revision
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -61,7 +61,7 @@ jobs:
     needs: verify-version
     steps:
       - name: Check out verified tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.verify-version.outputs.release_tag }}
 
@@ -91,7 +91,7 @@ jobs:
             suffix: ""
     steps:
       - name: Check out verified tag
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.verify-version.outputs.release_tag }}
 
@@ -134,7 +134,7 @@ jobs:
       - build
     steps:
       - name: Download release binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: electrotest-v${{ needs.verify-version.outputs.release_version }}-*
           path: release-assets
@@ -147,7 +147,7 @@ jobs:
           find release-assets -maxdepth 1 -type f -print0 | sort -z | xargs -0 sha256sum > release-assets/SHA256SUMS.txt
 
       - name: Upload checksum artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: release-checksums
           path: release-assets/SHA256SUMS.txt
@@ -165,14 +165,14 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Download release binaries
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: electrotest-v${{ needs.verify-version.outputs.release_version }}-*
           path: release-assets
           merge-multiple: true
 
       - name: Download checksum artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-checksums
           path: release-assets
