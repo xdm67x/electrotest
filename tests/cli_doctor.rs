@@ -75,7 +75,7 @@ fn doctor_fails_when_worker_dependency_is_missing() {
     let cache_dir = temp.path().join("cache");
     std::fs::create_dir_all(&bin_dir).unwrap();
     std::fs::create_dir_all(cache_dir.join("worker/v1")).unwrap();
-    write_fake_node(&bin_dir, "v20.0.0");
+    write_fake_node(&bin_dir, "v25.0.0");
     std::fs::write(cache_dir.join("worker/v1/package.json"), "{}\n").unwrap();
 
     Command::cargo_bin("electrotest")
@@ -95,7 +95,7 @@ fn doctor_fails_for_invalid_startup_config() {
     let bin_dir = temp.path().join("bin");
     let cache_dir = temp.path().join("cache");
     std::fs::create_dir_all(&bin_dir).unwrap();
-    write_fake_node(&bin_dir, "v20.0.0");
+    write_fake_node(&bin_dir, "v25.0.0");
     write_worker_dependency(&cache_dir);
     write_launch_config(temp.path(), "", "features", "steps");
     std::fs::create_dir_all(temp.path().join("features")).unwrap();
@@ -118,7 +118,7 @@ fn doctor_succeeds_with_only_ok_output() {
     let bin_dir = temp.path().join("bin");
     let cache_dir = temp.path().join("cache");
     std::fs::create_dir_all(&bin_dir).unwrap();
-    write_fake_node(&bin_dir, "v20.0.0");
+    write_fake_node(&bin_dir, "v25.0.0");
     write_worker_dependency(&cache_dir);
     write_launch_config(temp.path(), "command = \"npm\"", "features", "steps");
     std::fs::create_dir_all(temp.path().join("features")).unwrap();
@@ -142,7 +142,7 @@ fn doctor_reports_missing_feature_path() {
     let bin_dir = temp.path().join("bin");
     let cache_dir = temp.path().join("cache");
     std::fs::create_dir_all(&bin_dir).unwrap();
-    write_fake_node(&bin_dir, "v20.0.0");
+    write_fake_node(&bin_dir, "v25.0.0");
     write_worker_dependency(&cache_dir);
     write_launch_config(
         temp.path(),
@@ -169,7 +169,7 @@ fn doctor_reports_missing_step_path() {
     let bin_dir = temp.path().join("bin");
     let cache_dir = temp.path().join("cache");
     std::fs::create_dir_all(&bin_dir).unwrap();
-    write_fake_node(&bin_dir, "v20.0.0");
+    write_fake_node(&bin_dir, "v25.0.0");
     write_worker_dependency(&cache_dir);
     write_launch_config(
         temp.path(),
