@@ -80,10 +80,15 @@ async fn run_launch_fixture(feature_name: &str) -> FixtureRun {
     let fixture = fixture_project().await;
     let fixture_app_root = prepare_fixture_app_root(&fixture.root);
     let electron_bin = fixture_app_root.join("node_modules/.bin/electron");
+    let args = fixture_electron_args(&fixture_app_root, &[]);
+    let args_literal = args
+        .iter()
+        .map(|arg| format!("{arg:?}"))
+        .collect::<Vec<_>>()
+        .join(", ");
     let raw_config = format!(
-        "[app]\nmode = \"launch\"\ncommand = {:?}\nargs = [{:?}]\n\n[paths]\nfeatures = [\"features/{feature_name}\"]\nsteps = [\"steps/sample.steps.ts\"]\nartifacts = \".electrotest/artifacts\"\n",
+        "[app]\nmode = \"launch\"\ncommand = {:?}\nargs = [{args_literal}]\n\n[paths]\nfeatures = [\"features/{feature_name}\"]\nsteps = [\"steps/sample.steps.ts\"]\nartifacts = \".electrotest/artifacts\"\n",
         electron_bin.to_string_lossy(),
-        fixture_app_root.to_string_lossy(),
     );
 
     run_electrotest_project(
@@ -247,6 +252,24 @@ fn prepare_fixture_app_root(fixture_root: &Path) -> PathBuf {
     app_root
 }
 
+fn fixture_electron_args(app_root: &Path, option_args: &[String]) -> Vec<String> {
+    fixture_electron_args_for_platform(app_root, option_args, cfg!(target_os = "linux"))
+}
+
+fn fixture_electron_args_for_platform(
+    app_root: &Path,
+    option_args: &[String],
+    is_linux: bool,
+) -> Vec<String> {
+    let mut args = Vec::with_capacity(option_args.len() + 2);
+    if is_linux {
+        args.push("--no-sandbox".to_owned());
+    }
+    args.extend(option_args.iter().cloned());
+    args.push(app_root.to_string_lossy().into_owned());
+    args
+}
+
 fn copy_fixture_directory(source: &Path, destination: &Path, exclude_names: &[&str]) {
     std::fs::create_dir_all(destination).unwrap();
 
@@ -368,5 +391,40 @@ mod tests {
 
         drop(lock);
         handle.join().unwrap();
+    }
+
+    #[test]
+    fn linux_fixture_electron_args_disable_sandbox_before_app_path() {
+        let args = fixture_electron_args_for_platform(
+            Path::new("/tmp/electron-app"),
+            &["--remote-debugging-port=9222".to_owned()],
+            true,
+        );
+
+        assert_eq!(
+            args,
+            vec![
+                "--no-sandbox".to_owned(),
+                "--remote-debugging-port=9222".to_owned(),
+                "/tmp/electron-app".to_owned(),
+            ]
+        );
+    }
+
+    #[test]
+    fn non_linux_fixture_electron_args_keep_explicit_options_only() {
+        let args = fixture_electron_args_for_platform(
+            Path::new("/tmp/electron-app"),
+            &["--remote-debugging-port=9222".to_owned()],
+            false,
+        );
+
+        assert_eq!(
+            args,
+            vec![
+                "--remote-debugging-port=9222".to_owned(),
+                "/tmp/electron-app".to_owned(),
+            ]
+        );
     }
 }

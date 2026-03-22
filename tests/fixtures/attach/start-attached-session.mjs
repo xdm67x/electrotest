@@ -6,9 +6,14 @@ const endpointFile = process.argv[2];
 const fixtureAppRoot = process.argv[3];
 
 const port = await reservePort();
+const electronArgs = [
+  ...(process.platform === "linux" ? ["--no-sandbox"] : []),
+  `--remote-debugging-port=${port}`,
+  fixtureAppRoot,
+];
 const child = spawn(
   `${fixtureAppRoot}/node_modules/.bin/electron`,
-  [fixtureAppRoot, `--remote-debugging-port=${port}`],
+  electronArgs,
   {
     detached: true,
     stdio: "inherit",
