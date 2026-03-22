@@ -1,0 +1,30 @@
+// Folder-specific settings
+//
+// For a full list of overridable settings, and general information on folder-specific settings,
+// see the documentation: https://zed.dev/docs/configuring-zed#settings-files
+{
+  "lsp": {
+    "oxfmt": {
+      "initialization_options": {
+        "settings": {
+          "fmt.configPath": "./examples/electron-app/.oxfmtrc.json",
+        },
+      },
+    },
+  },
+  "languages": {
+    "JavaScript": {
+      "format_on_save": "on",
+      "prettier": {
+        "allowed": false,
+      },
+      "formatter": [
+        {
+          "language_server": {
+            "name": "oxfmt",
+          },
+        },
+      ],
+    },
+  },
+}
