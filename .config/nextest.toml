@@ -1,4 +1,3 @@
-fail-fast = false
-
 [profile.ci]
+fail-fast = false
 slow-timeout = "60s"
