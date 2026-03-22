@@ -29,16 +29,16 @@ async fn ensure_node_available() -> Result<(), crate::Error> {
 async fn ensure_supported_node_version() -> Result<(), crate::Error> {
     let output = Command::new("node").arg("--version").output().await?;
     let version = String::from_utf8_lossy(&output.stdout);
+    let version = version.trim();
 
     let major = version
-        .trim()
         .trim_start_matches('v')
         .split('.')
         .next()
         .and_then(|value| value.parse::<u64>().ok());
 
     match major {
-        Some(18 | 20 | 22) => Ok(()),
+        Some(24 | 25) => Ok(()),
         _ => Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             format!("Node.js version {version:?} is not supported"),

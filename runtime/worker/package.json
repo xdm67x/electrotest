@@ -3,12 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node ./scripts/build.mjs"
+    "build": "node ./scripts/build.mjs",
+    "fmt": "oxfmt"
   },
   "dependencies": {
     "playwright": "^1.52.0"
   },
   "devDependencies": {
+    "oxfmt": "^0.41.0",
     "typescript": "^5.8.0"
   }
 }
