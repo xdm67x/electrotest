@@ -19,8 +19,7 @@ jobs:
       GITHUB_TOKEN: ${{ github.token }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Check out main
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: main
           fetch-depth: 0
@@ -87,6 +86,8 @@ jobs:
             echo "failed to update Cargo.toml version" >&2
             exit 1
           fi
+
+          cargo update
 
       - name: Create branch, commit, and open PR
         shell: bash
