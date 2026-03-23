@@ -4,7 +4,11 @@ use crate::cli::steps::StepHandler;
 use anyhow::Result;
 use async_trait::async_trait;
 use regex::Regex;
-use tokio::time::{sleep, Duration};
+use std::sync::LazyLock;
+use tokio::time::{Duration, sleep};
+
+const BUTTON_CLICK_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r#"click on "([^"]+)""#).unwrap());
 
 /// Handler for: "I click on ..."
 pub struct ClickStep;
@@ -16,46 +20,52 @@ impl StepHandler for ClickStep {
     }
 
     async fn execute(&self, step: &Step, ctx: &mut Context) -> Result<()> {
-        // Try to match "click on button \"<text>\""
-        let button_re = Regex::new(r#"click on button "([^"]+)""#).unwrap();
-        // Try to match "click on \"<selector>\""
-        let selector_re = Regex::new(r#"click on "([^"]+)""#).unwrap();
+        match BUTTON_CLICK_REGEX.captures(&step.text) {
+            Some(caps) => {
+                let selector = &caps[1];
+                let script = format!(
+                    r#"
+                    (function() {{
+                        // 1. Try CSS selector first
+                        let el = document.querySelector({selector:?});
 
-        let (selector, description) = if let Some(caps) = button_re.captures(&step.text) {
-            let text = &caps[1];
-            let sel = format!("button:has-text('{}')", text);
-            (sel, format!("button with text '{}'", text))
-        } else if let Some(caps) = selector_re.captures(&step.text) {
-            let sel = caps[1].to_string();
-            let desc = sel.clone();
-            (sel, desc)
-        } else {
-            return Err(anyhow::anyhow!("Invalid click format"));
-        };
+                        // 2. If not found, search by text content
+                        if (!el) {{
+                            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+                            let node;
+                            while (node = walker.nextNode()) {{
+                                if (node.textContent.trim() === {selector:?}) {{
+                                    el = node.parentElement;
+                                    break;
+                                }}
+                            }}
+                        }}
 
-        // Use JavaScript to click the element
-        let script = format!(
-            r#"
-            (function() {{
-                let el = document.querySelector('{}');
-                if (el) {{
-                    el.click();
-                    return 'clicked';
-                }}
-                return 'not found';
-            }})()
-            "#,
-            selector.replace('"', "\\\"")
-        );
+                        // 3. Click the element if found
+                        if (el) {{
+                            el.scrollIntoView({{ behavior: 'instant', block: 'center' }});
+                            el.click();
+                            return 'clicked';
+                        }}
 
-        let result = ctx.cdp_client.evaluate(&script).await?;
+                        return 'not found';
+                    }})()
+                    "#
+                );
 
-        if result.contains("not found") {
-            return Err(anyhow::anyhow!("Element '{}' not found", description));
+                let result = ctx.cdp_client.evaluate(&script).await?;
+
+                if result.contains("not found") {
+                    anyhow::bail!("Element '{selector}' not found");
+                }
+
+                println!("✓ Clicked on {selector}");
+                Ok(())
+            }
+            None => {
+                anyhow::bail!("invalid click format");
+            }
         }
-
-        println!("✓ Clicked on {}", description);
-        Ok(())
     }
 }
 
