@@ -153,7 +153,7 @@ SHA256_LINUX=$(shasum -a 256 /tmp/electrotest-linux-x64.tar.gz | cut -d' ' -f1)
 
 **Step 7.2: Update the Homebrew formula**
 
-Clone or update the homebrew-tap repo, then create/update `electrotest.rb`:
+Update the formula at `Formula/electrotest.rb` in the homebrew-tap repository (always use the `Formula/` subdirectory):
 
 ```ruby
 class Electrotest < Formula
@@ -189,7 +189,7 @@ end
 
 ```bash
 cd /path/to/homebrew-tap
-git add electrotest.rb
+git add Formula/electrotest.rb
 git commit -m "electrotest: update to VERSION"
 git push origin main
 ```
@@ -240,4 +240,4 @@ claude "monitor release CI status"
 - `Cargo.lock` - updated via cargo update
 - `CHANGELOG.md` - new entry added
 - `.github/workflows/release.yml` - CI workflow (created once in project root)
-- `electrotest.rb` (in homebrew-tap repo) - formula updated
+- `Formula/electrotest.rb` (in homebrew-tap repo) - formula updated (always in Formula/ subdirectory)

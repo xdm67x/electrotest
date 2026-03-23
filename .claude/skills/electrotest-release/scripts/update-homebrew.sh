@@ -71,4 +71,4 @@ end
 RUBY
 
 echo ""
-echo "Formula generated. Copy this to your homebrew-tap repo as electrotest.rb"
+echo "Formula generated. Copy this to your homebrew-tap repo as Formula/electrotest.rb"
