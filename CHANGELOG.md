@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2026-03-24
+
+### Changes
+- fix: click on the button
+
+**Full Changelog**: https://github.com/xdm67x/electrotest/compare/v0.1.0...v0.2.0
+
 ## [0.1.0] - 2026-03-23
 
 ### Initial Release
