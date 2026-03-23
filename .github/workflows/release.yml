@@ -1,0 +1,89 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Build ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS ARM (Apple Silicon)
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            binary: electrotest
+            archive: electrotest-macos-arm64
+          # Linux x86_64 musl
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            binary: electrotest
+            archive: electrotest-linux-x64
+          # Windows x86_64
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            binary: electrotest.exe
+            archive: electrotest-windows-x64
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: ${{ matrix.target }}
+
+      - name: Install musl tools
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Build release binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Strip binary (Unix)
+        if: matrix.os != 'windows-latest'
+        run: strip target/${{ matrix.target }}/release/${{ matrix.binary }}
+
+      - name: Create archive (Unix)
+        if: matrix.os != 'windows-latest'
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/${{ matrix.binary }} dist/
+          cp README.md dist/ 2>/dev/null || true
+          cp LICENSE dist/ 2>/dev/null || true
+          tar -czf ${{ matrix.archive }}.tar.gz -C dist .
+
+      - name: Create archive (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+          Copy-Item target/${{ matrix.target }}/release/${{ matrix.binary }} -Destination dist/
+          Copy-Item README.md -Destination dist/ -ErrorAction SilentlyContinue
+          Copy-Item LICENSE -Destination dist/ -ErrorAction SilentlyContinue
+          Compress-Archive -Path dist/* -DestinationPath ${{ matrix.archive }}.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}.*
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: ${{ matrix.archive }}.*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
