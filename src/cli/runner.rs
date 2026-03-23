@@ -17,6 +17,7 @@ pub struct ScenarioResult {
 
 /// Result of running a feature
 pub struct FeatureResult {
+    #[allow(dead_code)]
     pub name: String,
     pub scenarios: Vec<ScenarioResult>,
 }

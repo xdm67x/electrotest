@@ -6,7 +6,10 @@
 pub mod client;
 pub mod messages;
 
-pub use client::{CdpClient, ConnectionState};
+pub use client::CdpClient;
+#[allow(unused_imports)]
+pub use client::ConnectionState;
+#[allow(unused_imports)]
 pub use messages::{
     CdpError, CdpRequest, CdpResponse, EvaluateResult, MessageId, RemoteObject, TargetInfo,
 };

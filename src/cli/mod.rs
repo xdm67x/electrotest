@@ -12,7 +12,6 @@ use crate::cli::runner::FeatureRunner;
 use anyhow::{Context as _, Result};
 use args::CliArgs;
 use clap::Parser;
-use std::path::PathBuf;
 
 /// Run the CLI application
 pub async fn run() -> Result<()> {

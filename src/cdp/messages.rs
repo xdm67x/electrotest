@@ -17,6 +17,7 @@ pub struct CdpRequest {
 
 /// CDP response structure from browser
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct CdpResponse {
     pub id: Option<MessageId>,
     #[serde(default)]
@@ -30,6 +31,7 @@ pub struct CdpResponse {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct CdpError {
     pub code: i32,
     pub message: String,
@@ -39,6 +41,7 @@ pub struct CdpError {
 
 /// Target info from /json/list endpoint
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct TargetInfo {
     pub id: String,
     pub title: String,
@@ -58,6 +61,7 @@ pub struct EvaluateResult {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct RemoteObject {
     #[serde(rename = "type")]
     pub object_type: String,
@@ -68,6 +72,7 @@ pub struct RemoteObject {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct ExceptionDetails {
     pub exception_id: i32,
     pub text: String,
@@ -77,6 +82,7 @@ pub struct ExceptionDetails {
 
 /// Window bounds for Browser.setWindowBounds
 #[derive(Debug, Clone, Serialize)]
+#[allow(dead_code)]
 pub struct WindowBounds {
     pub width: i32,
     pub height: i32,
@@ -85,6 +91,7 @@ pub struct WindowBounds {
 /// Window state for Browser.setWindowBounds
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(dead_code)]
 pub enum WindowState {
     Normal,
     Minimized,

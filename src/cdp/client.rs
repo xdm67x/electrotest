@@ -18,6 +18,7 @@ use tokio_tungstenite::tungstenite::Message;
 use crate::cdp::messages::{CdpRequest, CdpResponse, EvaluateResult, MessageId, TargetInfo};
 
 /// Type for WebSocket writer
+#[allow(dead_code)]
 pub type WsWriter = futures_util::stream::SplitSink<
     WebSocketStream<MaybeTlsStream<TcpStream>>,
     Message,
@@ -57,6 +58,7 @@ impl CdpClient {
     }
 
     /// Get current connection state
+    #[allow(dead_code)]
     pub async fn state(&self) -> ConnectionState {
         *self.state.read().await
     }
@@ -294,6 +296,7 @@ impl CdpClient {
     }
 
     /// Get the current URL
+    #[allow(dead_code)]
     pub async fn get_url(&self) -> Result<String> {
         self.evaluate("window.location.href").await
     }

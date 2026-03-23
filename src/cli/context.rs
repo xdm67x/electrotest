@@ -1,5 +1,4 @@
 use crate::cdp::CdpClient;
-use anyhow::Result;
 use std::path::PathBuf;
 
 /// Context shared between step handlers
