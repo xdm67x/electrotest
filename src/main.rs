@@ -1,9 +1,8 @@
 mod cdp;
+mod cli;
 mod electron;
-mod prompt;
-
-use prompt::App;
 
 fn main() -> anyhow::Result<()> {
-    App::default().run()
+    let rt = tokio::runtime::Runtime::new()?;
+    rt.block_on(cli::run())
 }
