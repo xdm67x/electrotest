@@ -38,17 +38,16 @@ impl App {
 
     pub fn tick(&mut self) -> bool {
         match &mut self.mode {
-            AppMode::Picker(_) => true,
-            AppMode::Console(console) => {
-                if console.is_alive() {
-                    true
-                } else {
-                    console.push_log(format!(
-                        "Electron process {} has been killed",
-                        console.electron_pid()
-                    ));
-                    false
+            AppMode::Picker(picker) => {
+                // Rafraîchit automatiquement la liste des processus toutes les 2 secondes
+                if let Err(error) = picker.tick() {
+                    eprintln!("Failed to refresh process list: {}", error);
                 }
+                true
+            }
+            AppMode::Console(console) => {
+                // Vérifie l'état du processus toutes les 2 secondes
+                console.tick()
             }
         }
     }

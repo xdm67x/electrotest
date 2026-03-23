@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
@@ -9,6 +11,7 @@ use crate::electron::{Electron, ElectronProcess};
 
 const MAX_HISTORY: usize = 100;
 const LOG_LIMIT: usize = 200;
+const ALIVE_CHECK_INTERVAL: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Clone)]
 pub struct ConsolePrompt {
@@ -19,6 +22,7 @@ pub struct ConsolePrompt {
     history_index: Option<usize>,
     logs: Vec<String>,
     should_exit: bool,
+    last_alive_check: Instant,
 }
 
 #[derive(Debug, Clone)]
@@ -85,6 +89,7 @@ impl ConsolePrompt {
             history_index: None,
             logs: Vec::new(),
             should_exit: false,
+            last_alive_check: Instant::now(),
         };
 
         prompt.push_log(format!(
@@ -97,13 +102,20 @@ impl ConsolePrompt {
         prompt
     }
 
-    pub fn electron_pid(&self) -> u32 {
-        self.electron.pid()
+    pub fn tick(&mut self) -> bool {
+        if self.last_alive_check.elapsed() >= ALIVE_CHECK_INTERVAL {
+            self.last_alive_check = Instant::now();
+            if !self.electron.is_alive() {
+                self.push_log(format!(
+                    "Electron process {} has been killed",
+                    self.electron.pid()
+                ));
+                return false;
+            }
+        }
+        true
     }
 
-    pub fn is_alive(&self) -> bool {
-        self.electron.is_alive()
-    }
 
     pub fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<ConsoleAction> {
         match key_event.code {

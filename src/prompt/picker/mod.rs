@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
@@ -7,11 +9,14 @@ use ratatui::{
 
 use crate::electron::{ElectronProcess, list_processes};
 
+const REFRESH_INTERVAL: Duration = Duration::from_secs(2);
+
 #[derive(Debug, Clone)]
 pub struct ProcessPicker {
     processes: Vec<ElectronProcess>,
     selected: usize,
     status: String,
+    last_refresh: Instant,
 }
 
 #[derive(Debug, Clone)]
@@ -27,6 +32,7 @@ impl ProcessPicker {
             processes: Vec::new(),
             selected: 0,
             status: String::new(),
+            last_refresh: Instant::now(),
         };
         picker.refresh()?;
         Ok(picker)
@@ -37,11 +43,21 @@ impl ProcessPicker {
             processes: Vec::new(),
             selected: 0,
             status,
+            last_refresh: Instant::now(),
         }
+    }
+
+    pub fn tick(&mut self) -> Result<()> {
+        if self.last_refresh.elapsed() >= REFRESH_INTERVAL {
+            self.refresh()?;
+            self.last_refresh = Instant::now();
+        }
+        Ok(())
     }
 
     pub fn refresh(&mut self) -> Result<()> {
         self.processes = list_processes()?;
+        self.last_refresh = Instant::now();
 
         if self.processes.is_empty() {
             self.selected = 0;
