@@ -176,7 +176,7 @@ impl CdpClient {
         {
             let mut writer = self.writer.lock().await;
             if let Some(ref mut w) = *writer {
-                w.send(Message::Text(json)).await?;
+                w.send(Message::Text(json.into())).await?;
             } else {
                 bail!("WebSocket writer not initialized");
             }
