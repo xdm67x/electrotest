@@ -4,7 +4,8 @@
   "description": "",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "start:debug": "electron . --remote-debugging-port=9222"
   },
   "keywords": [],
   "author": "",

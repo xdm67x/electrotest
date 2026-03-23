@@ -39,15 +39,50 @@ impl ElectronProcess {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Electron {
     pid: u32,
+    cdp_port: Option<u16>,
 }
 
 impl Electron {
     pub fn from_process(process: &ElectronProcess) -> Self {
-        Self { pid: process.pid() }
+        let cdp_port = Self::extract_cdp_port(process);
+        Self {
+            pid: process.pid(),
+            cdp_port,
+        }
     }
 
     pub fn pid(&self) -> u32 {
         self.pid
+    }
+
+    pub fn cdp_port(&self) -> Option<u16> {
+        self.cdp_port
+    }
+
+    /// Check if this Electron process has CDP debugging enabled
+    pub fn has_debugging(&self) -> bool {
+        self.cdp_port.is_some()
+    }
+
+    /// Extract CDP port from command line arguments
+    fn extract_cdp_port(process: &ElectronProcess) -> Option<u16> {
+        let cmd = process.command_line();
+
+        // Look for --remote-debugging-port=XXXX
+        if let Some(idx) = cmd.find("--remote-debugging-port=") {
+            let start = idx + "--remote-debugging-port=".len();
+            let end = cmd[start..].find(' ').map(|i| start + i).unwrap_or(cmd.len());
+            return cmd[start..end].parse().ok();
+        }
+
+        // Also check command parts individually
+        for part in &process.command {
+            if let Some(port_str) = part.strip_prefix("--remote-debugging-port=") {
+                return port_str.parse().ok();
+            }
+        }
+
+        None
     }
 
     pub fn is_alive(&self) -> bool {

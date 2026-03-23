@@ -16,28 +16,31 @@ const POLL_INTERVAL: Duration = Duration::from_millis(200);
 
 impl App {
     pub fn run(&mut self) -> Result<()> {
+        // Create tokio runtime BEFORE entering raw mode
+        // This avoids "Device not configured" error on macOS
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()?;
+
         let mut terminal = TerminalSession::enter()?;
 
         loop {
             terminal.terminal_mut().draw(|frame| self.render(frame))?;
 
             if !event::poll(POLL_INTERVAL)? {
-                if !self.tick() {
+                // Run async tick operations
+                if !rt.block_on(self.tick_async()) {
                     break;
                 }
                 continue;
             }
 
             let event = event::read()?;
-            if !self.handle_runtime_event(event)? {
+            if !rt.block_on(self.handle_event_async(event))? {
                 break;
             }
         }
 
         Ok(())
-    }
-
-    fn handle_runtime_event(&mut self, event: Event) -> Result<bool> {
-        self.handle_event(event)
     }
 }

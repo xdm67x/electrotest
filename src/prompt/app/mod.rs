@@ -5,12 +5,10 @@ use crate::electron::ElectronProcess;
 use crate::prompt::console::{ConsoleAction, ConsolePrompt};
 use crate::prompt::picker::{PickerAction, ProcessPicker};
 
-#[derive(Debug, Clone)]
 pub struct App {
     mode: AppMode,
 }
 
-#[derive(Debug, Clone)]
 enum AppMode {
     Picker(ProcessPicker),
     Console(ConsolePrompt),
@@ -52,6 +50,23 @@ impl App {
         }
     }
 
+    /// Async tick for CDP operations
+    pub async fn tick_async(&mut self) -> bool {
+        match &mut self.mode {
+            AppMode::Picker(picker) => {
+                if let Err(error) = picker.tick() {
+                    eprintln!("Failed to refresh process list: {}", error);
+                }
+                true
+            }
+            AppMode::Console(console) => {
+                // Run console tick_async for CDP operations
+                console.tick_async().await;
+                console.tick()
+            }
+        }
+    }
+
     pub fn handle_event(&mut self, event: Event) -> Result<bool> {
         let Event::Key(key_event) = event else {
             return Ok(true);
@@ -84,6 +99,48 @@ impl App {
                     Ok(true)
                 }
             },
+        }
+    }
+
+    /// Async event handler for CDP operations
+    pub async fn handle_event_async(&mut self,
+        event: Event,
+    ) -> Result<bool> {
+        let Event::Key(key_event) = event else {
+            return Ok(true);
+        };
+
+        if key_event.kind != KeyEventKind::Press {
+            return Ok(true);
+        }
+
+        if key_event.modifiers.contains(KeyModifiers::CONTROL)
+            && matches!(key_event.code, KeyCode::Char('c') | KeyCode::Char('C'))
+        {
+            return Ok(false);
+        }
+
+        match &mut self.mode {
+            AppMode::Picker(picker) => match picker.handle_key_event(key_event)? {
+                PickerAction::Continue => Ok(true),
+                PickerAction::Quit => Ok(false),
+                PickerAction::OpenProcess(process) => {
+                    self.open_process(process);
+                    Ok(true)
+                }
+            },
+            AppMode::Console(console) => {
+                match console.handle_key_event_async(key_event).await? {
+                    ConsoleAction::Continue => Ok(true),
+                    ConsoleAction::Quit => Ok(false),
+                    ConsoleAction::BackToPicker => {
+                        // Disconnect CDP before going back
+                        console.disconnect_cdp().await.ok();
+                        self.mode = AppMode::Picker(ProcessPicker::new()?);
+                        Ok(true)
+                    }
+                }
+            }
         }
     }
 

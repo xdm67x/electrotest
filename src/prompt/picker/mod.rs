@@ -11,7 +11,6 @@ use crate::electron::{ElectronProcess, list_processes};
 
 const REFRESH_INTERVAL: Duration = Duration::from_secs(2);
 
-#[derive(Debug, Clone)]
 pub struct ProcessPicker {
     processes: Vec<ElectronProcess>,
     selected: usize,
@@ -19,7 +18,6 @@ pub struct ProcessPicker {
     last_refresh: Instant,
 }
 
-#[derive(Debug, Clone)]
 pub enum PickerAction {
     Continue,
     OpenProcess(ElectronProcess),

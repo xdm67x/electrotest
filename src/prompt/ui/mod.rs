@@ -1,6 +1,6 @@
 use std::io;
 
-use anyhow::Result;
+use anyhow::{Result};
 use crossterm::{
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -13,7 +13,13 @@ pub struct TerminalSession {
 
 impl TerminalSession {
     pub fn enter() -> Result<Self> {
-        enable_raw_mode()?;
+        enable_raw_mode().map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to enable raw terminal mode: {}. \
+                 This usually means you're not running from an interactive terminal.",
+                e
+            )
+        })?;
         let mut stdout = io::stdout();
         execute!(stdout, EnterAlternateScreen)?;
 

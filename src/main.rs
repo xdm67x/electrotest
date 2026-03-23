@@ -1,3 +1,4 @@
+mod cdp;
 mod electron;
 mod prompt;
 
