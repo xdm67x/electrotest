@@ -241,3 +241,159 @@ impl StepHandler for TypeTextStep {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::feature::Keyword;
+
+    #[test]
+    fn test_click_can_handle_when() {
+        let handler = ClickStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: r#"I click on "Submit""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_click_can_handle_and() {
+        let handler = ClickStep;
+        let step = Step {
+            keyword: Keyword::And,
+            text: r##"I click on "#submit-btn""##.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_click_cannot_handle_given() {
+        let handler = ClickStep;
+        let step = Step {
+            keyword: Keyword::Given,
+            text: r#"I click on "Submit""#.to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_click_cannot_handle_unrelated_text() {
+        let handler = ClickStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: "I press the button".to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_screenshot_can_handle_when() {
+        let handler = ScreenshotStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: r#"I take a screenshot "test.png""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_screenshot_can_handle_and() {
+        let handler = ScreenshotStep;
+        let step = Step {
+            keyword: Keyword::And,
+            text: r#"I take a screenshot "output.png""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_screenshot_cannot_handle_given() {
+        let handler = ScreenshotStep;
+        let step = Step {
+            keyword: Keyword::Given,
+            text: r#"I take a screenshot "test.png""#.to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_wait_can_handle_when() {
+        let handler = WaitStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: "I wait 2 seconds".to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_wait_can_handle_and() {
+        let handler = WaitStep;
+        let step = Step {
+            keyword: Keyword::And,
+            text: "I wait 1.5 seconds".to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_wait_can_handle_singular_second() {
+        let handler = WaitStep;
+        let step = Step {
+            keyword: Keyword::And,
+            text: "I wait 1 second".to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_wait_cannot_handle_given() {
+        let handler = WaitStep;
+        let step = Step {
+            keyword: Keyword::Given,
+            text: "I wait 2 seconds".to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_type_text_can_handle_when() {
+        let handler = TypeTextStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: r#"I type "hello" into "input""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_type_text_can_handle_and() {
+        let handler = TypeTextStep;
+        let step = Step {
+            keyword: Keyword::And,
+            text: r##"I type "test message" into "#message-input""##.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_type_text_cannot_handle_given() {
+        let handler = TypeTextStep;
+        let step = Step {
+            keyword: Keyword::Given,
+            text: r#"I type "hello" into "input""#.to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_type_text_cannot_handle_missing_into() {
+        let handler = TypeTextStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: r#"I type "hello""#.to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+}

@@ -10,14 +10,8 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.32.1",
   "devDependencies": {
     "electron": "^41.0.3",
     "oxfmt": "^0.41.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "electron"
-    ]
   }
 }

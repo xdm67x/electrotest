@@ -125,3 +125,119 @@ impl StepHandler for PageTitleStep {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::feature::Keyword;
+
+    #[test]
+    fn test_page_contains_can_handle_then() {
+        let handler = PageContainsStep;
+        let step = Step {
+            keyword: Keyword::Then,
+            text: r#"the page should contain "Hello""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_page_contains_can_handle_and() {
+        let handler = PageContainsStep;
+        let step = Step {
+            keyword: Keyword::And,
+            text: r#"the page should contain "World""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_page_contains_cannot_handle_when() {
+        let handler = PageContainsStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: r#"the page should contain "Hello""#.to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_element_visible_can_handle_then() {
+        let handler = ElementVisibleStep;
+        let step = Step {
+            keyword: Keyword::Then,
+            text: r##"the element "#header" should be visible"##.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_element_visible_can_handle_and() {
+        let handler = ElementVisibleStep;
+        let step = Step {
+            keyword: Keyword::And,
+            text: r##"the element "#footer" should be visible"##.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_element_visible_cannot_handle_when() {
+        let handler = ElementVisibleStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: r##"the element "#header" should be visible"##.to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_element_visible_cannot_handle_missing_visible() {
+        let handler = ElementVisibleStep;
+        let step = Step {
+            keyword: Keyword::Then,
+            text: r##"the element "#header" should exist"##.to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_page_title_can_handle_then() {
+        let handler = PageTitleStep;
+        let step = Step {
+            keyword: Keyword::Then,
+            text: r#"the page title should be "My Page""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_page_title_can_handle_and() {
+        let handler = PageTitleStep;
+        let step = Step {
+            keyword: Keyword::And,
+            text: r#"the page title should be "Dashboard""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_page_title_cannot_handle_when() {
+        let handler = PageTitleStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: r#"the page title should be "My Page""#.to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_page_title_cannot_handle_unrelated_text() {
+        let handler = PageTitleStep;
+        let step = Step {
+            keyword: Keyword::Then,
+            text: "the page should have a title".to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+}

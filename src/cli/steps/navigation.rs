@@ -58,3 +58,99 @@ impl StepHandler for NavigateStep {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::cli::feature::Keyword;
+
+    #[test]
+    fn test_window_size_can_handle_given() {
+        let handler = WindowSizeStep;
+        let step = Step {
+            keyword: Keyword::Given,
+            text: "the window size is 1920x1080".to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_window_size_can_handle_and() {
+        let handler = WindowSizeStep;
+        let step = Step {
+            keyword: Keyword::And,
+            text: "the window size is 800x600".to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_window_size_cannot_handle_when() {
+        let handler = WindowSizeStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: "the window size is 1920x1080".to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_window_size_cannot_handle_unrelated_text() {
+        let handler = WindowSizeStep;
+        let step = Step {
+            keyword: Keyword::Given,
+            text: "the window is open".to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_navigate_can_handle_navigate_to() {
+        let handler = NavigateStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: r#"I navigate to "https://example.com""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_navigate_can_handle_go_to() {
+        let handler = NavigateStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: r#"I go to "https://example.com""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_navigate_can_handle_and() {
+        let handler = NavigateStep;
+        let step = Step {
+            keyword: Keyword::And,
+            text: r#"I navigate to "https://example.com""#.to_string(),
+        };
+        assert!(handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_navigate_cannot_handle_given() {
+        let handler = NavigateStep;
+        let step = Step {
+            keyword: Keyword::Given,
+            text: r#"I navigate to "https://example.com""#.to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+
+    #[test]
+    fn test_navigate_cannot_handle_unrelated_text() {
+        let handler = NavigateStep;
+        let step = Step {
+            keyword: Keyword::When,
+            text: "I navigate the file system".to_string(),
+        };
+        assert!(!handler.can_handle(&step));
+    }
+}
