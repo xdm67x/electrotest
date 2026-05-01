@@ -39,6 +39,7 @@ impl StepRegistry {
         registry.register(Box::new(interaction::ClickStep));
         registry.register(Box::new(interaction::ScreenshotStep));
         registry.register(Box::new(interaction::WaitStep));
+        registry.register(Box::new(interaction::TypeTextStep));
         registry.register(Box::new(assertion::PageContainsStep));
         registry.register(Box::new(assertion::ElementVisibleStep));
         registry.register(Box::new(assertion::PageTitleStep));
