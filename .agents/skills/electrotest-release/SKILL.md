@@ -205,23 +205,14 @@ git push origin main
 7. **Verify Release** - Confirm GitHub Release was created with all artifacts
 8. **Homebrew** - Update tap with new URLs and SHA256 checksums
 
-## Common Commands
+## Helper Script
 
+A script to generate the Homebrew formula is available at:
+`.agents/skills/electrotest-release/scripts/update-homebrew.sh`
+
+Usage:
 ```bash
-# Full release workflow
-claude "release version 0.2.0"
-
-# Setup CI workflow file (one-time setup)
-claude "setup release CI workflow"
-
-# Update homebrew tap after release
-claude "update homebrew tap to version 0.2.0"
-
-# Create changelog only
-claude "generate changelog for version 0.2.0"
-
-# Monitor latest CI run
-claude "monitor release CI status"
+./.agents/skills/electrotest-release/scripts/update-homebrew.sh 0.2.0
 ```
 
 ## Important Notes

@@ -47,6 +47,13 @@ Electrotest is a CLI that runs Gherkin `.feature` files against an Electron proc
 - **No integration tests** — running the full tool requires a live Electron process with `--remote-debugging-port` enabled.
 - CI (`/.github/workflows/release.yml`) only builds releases; it does not run `cargo test`.
 
+## Release Workflow
+
+Release automation is documented as a skill at `.agents/skills/electrotest-release/SKILL.md`. The full sequence covers version bumping, changelog generation, git tagging, CI monitoring, and Homebrew tap updates.
+
+A helper script for generating the Homebrew formula lives at:
+`.agents/skills/electrotest-release/scripts/update-homebrew.sh`
+
 ## Style and Workflow
 
 - Use `cargo fmt` and `cargo clippy` — no custom linter config.
