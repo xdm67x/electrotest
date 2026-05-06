@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-03-24
+
+### Changes
+- ci: add GitHub Actions workflow for build and test on push
+- feat: auto-detect Electron path from node_modules
+- feat: add launch mode to automatically start and stop Electron app
+- test: add unit tests for all step handlers and feature validation files
+- feat: add type text step for typing into input fields
+- feat: add electrotest-pilot skill for Gherkin automation
+- refactor: move release skill to generic .agents/skills/ directory
+- docs: add AGENTS.md and symlink CLAUDE.md to it
+- chore: move from zed to vscode
+- docs: update skill to use Formula/ subdirectory for homebrew
+
+**Full Changelog**: https://github.com/xdm67x/electrotest/compare/v0.2.0...v0.3.0
+
 ## [0.2.0] - 2026-03-24
 
 ### Changes
