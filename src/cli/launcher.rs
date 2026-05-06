@@ -173,14 +173,12 @@ impl AppLauncher {
             
             match client.get(&url).send().await {
                 Ok(response) => {
-                    if response.status().is_success() {
-                        // Vérifier qu'il y a des targets
-                        if let Ok(targets) = response.json::<serde_json::Value>().await {
-                            if targets.as_array().map_or(false, |arr| !arr.is_empty()) {
-                                println!("✅ CDP available on port {}", self.port);
-                                return Ok(());
-                            }
-                        }
+                    if response.status().is_success()
+                        && let Ok(targets) = response.json::<serde_json::Value>().await
+                        && targets.as_array().is_some_and(|arr| !arr.is_empty())
+                    {
+                        println!("✅ CDP available on port {}", self.port);
+                        return Ok(());
                     }
                 }
                 Err(_) => {
@@ -239,39 +237,38 @@ impl AppLauncher {
                 .arg(format!("remote-debugging-port={}", port))
                 .output();
             
-            if let Ok(output) = output {
-                if !output.stdout.is_empty() {
-                    let pids = String::from_utf8_lossy(&output.stdout);
-                    println!("  📋 Found PIDs: {}", pids.trim());
-                    // Tuer chaque PID trouvé
-                    for pid_str in pids.trim().split_whitespace() {
-                        println!("  💀 Killing PID {}...", pid_str);
-                        let _ = Command::new("kill")
-                            .arg("-9")
-                            .arg(pid_str)
-                            .status();
-                    }
+            // Kill all processes using this debugging port
+            if let Ok(output) = output && !output.stdout.is_empty() {
+                let pids = String::from_utf8_lossy(&output.stdout);
+                println!("  📋 Found PIDs: {}", pids.trim());
+                // No need to trim before split_whitespace - it handles leading/trailing whitespace
+                for pid_str in pids.split_whitespace() {
+                    println!("  💀 Killing PID {}...", pid_str);
+                    let _ = Command::new("kill")
+                        .arg("-9")
+                        .arg(pid_str)
+                        .status();
                 }
             }
             
-            // Tuer aussi les enfants directs du processus parent
+            // Kill direct children of the parent process
             println!("  💀 Killing children of PID {}...", parent_pid);
             let output = Command::new("pgrep")
                 .arg("-P")
                 .arg(parent_pid.to_string())
                 .output();
             
-            if let Ok(output) = output {
-                if !output.stdout.is_empty() {
-                    let child_pids = String::from_utf8_lossy(&output.stdout);
-                    println!("  📋 Found child PIDs: {}", child_pids.trim());
-                    for pid_str in child_pids.trim().split_whitespace() {
-                        println!("  💀 Killing child PID {}...", pid_str);
-                        let _ = Command::new("kill")
-                            .arg("-9")
-                            .arg(pid_str)
-                            .status();
-                    }
+            // Kill all child processes found
+            if let Ok(output) = output && !output.stdout.is_empty() {
+                let child_pids = String::from_utf8_lossy(&output.stdout);
+                println!("  📋 Found child PIDs: {}", child_pids.trim());
+                // No need to trim before split_whitespace - it handles leading/trailing whitespace
+                for pid_str in child_pids.split_whitespace() {
+                    println!("  💀 Killing child PID {}...", pid_str);
+                    let _ = Command::new("kill")
+                        .arg("-9")
+                        .arg(pid_str)
+                        .status();
                 }
             }
         }
@@ -279,13 +276,13 @@ impl AppLauncher {
         #[cfg(windows)]
         {
             use std::process::Command;
-            // Sur Windows, tuer par PID parent avec /T pour tuer les enfants aussi
-            println!("  💀 Running: taskkill /F /T /PID {}", _parent_pid);
+            // On Windows, kill process tree using parent PID
+            println!("  💀 Running: taskkill /F /T /PID {}", parent_pid);
             let status = Command::new("taskkill")
                 .arg("/F")
                 .arg("/T")
                 .arg("/PID")
-                .arg(_parent_pid.to_string())
+                .arg(parent_pid.to_string())
                 .status();
             println!("  📊 taskkill result: {:?}", status);
         }

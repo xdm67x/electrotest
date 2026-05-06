@@ -7,7 +7,8 @@ use regex::Regex;
 use std::sync::LazyLock;
 use tokio::time::{Duration, sleep};
 
-const BUTTON_CLICK_REGEX: LazyLock<Regex> =
+/// Regex to match click step patterns like "click on "Submit""
+static BUTTON_CLICK_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"click on "([^"]+)""#).unwrap());
 
 /// Handler for: "I click on ..."
@@ -20,7 +21,9 @@ impl StepHandler for ClickStep {
     }
 
     async fn execute(&self, step: &Step, ctx: &mut Context) -> Result<()> {
-        match BUTTON_CLICK_REGEX.captures(&step.text) {
+        // Use a local variable to avoid borrowing the static LazyLock directly
+        let click_regex = &*BUTTON_CLICK_REGEX;
+        match click_regex.captures(&step.text) {
             Some(caps) => {
                 let selector = &caps[1];
                 let script = format!(
@@ -125,7 +128,8 @@ impl StepHandler for WaitStep {
     }
 }
 
-const TYPE_TEXT_REGEX: LazyLock<Regex> =
+/// Regex to match type step patterns like "type "hello" into "input""
+static TYPE_TEXT_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"type "([^"]+)" into "([^"]+)""#).unwrap());
 
 /// Handler for: "I type ... into ..."
@@ -138,7 +142,9 @@ impl StepHandler for TypeTextStep {
     }
 
     async fn execute(&self, step: &Step, ctx: &mut Context) -> Result<()> {
-        match TYPE_TEXT_REGEX.captures(&step.text) {
+        // Use a local variable to avoid borrowing the static LazyLock directly
+        let type_regex = &*TYPE_TEXT_REGEX;
+        match type_regex.captures(&step.text) {
             Some(caps) => {
                 let text = &caps[1];
                 let selector = &caps[2];

@@ -45,10 +45,10 @@ impl CliArgs {
         if let Some(ref p) = self.electron_path {
             return Ok(p.clone());
         }
-        if let Some(ref app_path) = self.app_path {
-            if let Some(detected) = launcher::detect_electron_path(app_path) {
-                return Ok(detected);
-            }
+        if let Some(ref app_path) = self.app_path
+            && let Some(detected) = launcher::detect_electron_path(app_path)
+        {
+            return Ok(detected);
         }
         anyhow::bail!(
             "Could not auto-detect Electron executable. \

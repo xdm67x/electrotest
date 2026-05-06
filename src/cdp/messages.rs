@@ -16,35 +16,44 @@ pub struct CdpRequest {
 }
 
 /// CDP response structure from browser
+/// Some fields may not be used directly but are part of the CDP protocol
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 pub struct CdpResponse {
     pub id: Option<MessageId>,
     #[serde(default)]
     pub result: Option<Value>,
     #[serde(default)]
     pub error: Option<CdpError>,
+    // These fields are part of the CDP spec but not currently used
     #[serde(default)]
+    #[allow(dead_code)]
     pub method: Option<String>,
     #[serde(default)]
+    #[allow(dead_code)]
     pub params: Option<Value>,
 }
 
+/// CDP error structure
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 pub struct CdpError {
     pub code: i32,
     pub message: String,
+    // Reserved for future CDP protocol extensions
     #[serde(default)]
+    #[allow(dead_code)]
     pub data: Option<Value>,
 }
 
 /// Target info from /json/list endpoint
+/// Represents an available debugging target (page, window, etc.)
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 pub struct TargetInfo {
     pub id: String,
+    // Human-readable title of the target (available for logging/debugging)
+    #[allow(dead_code)]
     pub title: String,
+    // URL of the target page (available for logging/debugging)
+    #[allow(dead_code)]
     pub url: String,
     #[serde(rename = "type")]
     pub target_type: String,
@@ -60,10 +69,12 @@ pub struct EvaluateResult {
     pub exception_details: Option<ExceptionDetails>,
 }
 
+/// Remote object returned from JavaScript evaluation
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 pub struct RemoteObject {
+    // Type of the object (e.g., "string", "number", "object")
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     pub object_type: String,
     #[serde(default)]
     pub value: Option<Value>,
@@ -71,16 +82,21 @@ pub struct RemoteObject {
     pub description: Option<String>,
 }
 
+/// Details about a JavaScript exception
 #[derive(Debug, Clone, Deserialize)]
-#[allow(dead_code)]
 pub struct ExceptionDetails {
+    // Unique identifier for this exception
+    #[allow(dead_code)]
     pub exception_id: i32,
     pub text: String,
     pub line_number: i32,
+    // Column where the exception occurred (not always available)
+    #[allow(dead_code)]
     pub column_number: i32,
 }
 
 /// Window bounds for Browser.setWindowBounds
+/// Note: Not currently used but kept for future CDP feature support
 #[derive(Debug, Clone, Serialize)]
 #[allow(dead_code)]
 pub struct WindowBounds {
@@ -89,6 +105,7 @@ pub struct WindowBounds {
 }
 
 /// Window state for Browser.setWindowBounds
+/// Note: Not currently used but kept for future CDP feature support
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(dead_code)]

@@ -17,8 +17,6 @@ pub struct ScenarioResult {
 
 /// Result of running a feature
 pub struct FeatureResult {
-    #[allow(dead_code)]
-    pub name: String,
     pub scenarios: Vec<ScenarioResult>,
 }
 
@@ -50,7 +48,6 @@ impl FeatureRunner {
         self.print_summary(&scenario_results);
 
         Ok(FeatureResult {
-            name: feature.name.clone(),
             scenarios: scenario_results,
         })
     }
@@ -134,10 +131,9 @@ impl FeatureRunner {
         println!("📊 Summary: {} passed, {} failed", passed, failed);
 
         for result in results {
-            if !result.passed {
-                if let Some(ref error) = result.error {
-                    println!("  ❌ {}: {}", result.name, error);
-                }
+            // Only print errors for failed scenarios
+            if !result.passed && let Some(ref error) = result.error {
+                println!("  ❌ {}: {}", result.name, error);
             }
         }
     }

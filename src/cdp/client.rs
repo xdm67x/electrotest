@@ -18,11 +18,14 @@ use tokio_tungstenite::tungstenite::Message;
 use crate::cdp::messages::{CdpRequest, CdpResponse, EvaluateResult, MessageId, TargetInfo};
 
 /// Type for WebSocket writer
-#[allow(dead_code)]
 pub type WsWriter = futures_util::stream::SplitSink<
     WebSocketStream<MaybeTlsStream<TcpStream>>,
     Message,
 >;
+
+/// Type alias for the WebSocket writer stored in CdpClient
+/// This makes the CdpClient struct definition cleaner and more readable
+type CdpWriter = Arc<Mutex<Option<WsWriter>>>;
 
 /// Connection state for CDP
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,12 +39,7 @@ pub enum ConnectionState {
 pub struct CdpClient {
     port: u16,
     state: Arc<RwLock<ConnectionState>>,
-    writer: Arc<Mutex<Option<
-        futures_util::stream::SplitSink<
-            WebSocketStream<MaybeTlsStream<TcpStream>>,
-            Message,
-        >,
-    >>>,
+    writer: CdpWriter,
     pending_requests: Arc<Mutex<HashMap<MessageId, oneshot::Sender<Result<CdpResponse>>>>>,
     next_id: Arc<Mutex<MessageId>>,
 }
@@ -55,12 +53,6 @@ impl CdpClient {
             pending_requests: Arc::new(Mutex::new(HashMap::new())),
             next_id: Arc::new(Mutex::new(1)),
         }
-    }
-
-    /// Get current connection state
-    #[allow(dead_code)]
-    pub async fn state(&self) -> ConnectionState {
-        *self.state.read().await
     }
 
     /// Connect to CDP by discovering targets and connecting to the first available one
@@ -116,12 +108,13 @@ impl CdpClient {
             while let Some(msg) = read.next().await {
                 match msg {
                     Ok(Message::Text(text)) => {
-                        if let Ok(response) = serde_json::from_str::<CdpResponse>(&text) {
-                            if let Some(id) = response.id {
-                                let mut pending = pending.lock().await;
-                                if let Some(tx) = pending.remove(&id) {
-                                    let _ = tx.send(Ok(response));
-                                }
+                        // Parse response and send to waiting channel if found
+                        if let Ok(response) = serde_json::from_str::<CdpResponse>(&text)
+                            && let Some(id) = response.id
+                        {
+                            let mut pending = pending.lock().await;
+                            if let Some(tx) = pending.remove(&id) {
+                                let _ = tx.send(Ok(response));
                             }
                         }
                     }
@@ -293,12 +286,6 @@ impl CdpClient {
     /// Get the page title
     pub async fn get_title(&self) -> Result<String> {
         self.evaluate("document.title").await
-    }
-
-    /// Get the current URL
-    #[allow(dead_code)]
-    pub async fn get_url(&self) -> Result<String> {
-        self.evaluate("window.location.href").await
     }
 
     /// List available CDP targets

@@ -6,10 +6,5 @@
 pub mod client;
 pub mod messages;
 
+// Main export - the CDP client for Electron automation
 pub use client::CdpClient;
-#[allow(unused_imports)]
-pub use client::ConnectionState;
-#[allow(unused_imports)]
-pub use messages::{
-    CdpError, CdpRequest, CdpResponse, EvaluateResult, MessageId, RemoteObject, TargetInfo,
-};
