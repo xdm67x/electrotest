@@ -28,6 +28,15 @@ jobs:
       - name: Build
         run: cargo build
 
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install electron dependencies
+        run: npm install
+        working-directory: examples/electron-app
+
       - name: Run tests
         run: cargo test
 
