@@ -29,11 +29,7 @@ impl FeatureRunner {
     }
 
     /// Run a feature file
-    pub async fn run_feature(
-        &self,
-        feature: &Feature,
-        ctx: &mut Context,
-    ) -> Result<FeatureResult> {
+    pub async fn run_feature(&self, feature: &Feature, ctx: &mut Context) -> Result<FeatureResult> {
         println!("\n📋 Feature: {}", feature.name);
         println!("{}", "=".repeat(50));
 
@@ -53,11 +49,7 @@ impl FeatureRunner {
     }
 
     /// Run a single scenario
-    async fn run_scenario(
-        &self,
-        scenario: &Scenario,
-        ctx: &mut Context,
-    ) -> ScenarioResult {
+    async fn run_scenario(&self, scenario: &Scenario, ctx: &mut Context) -> ScenarioResult {
         println!("\n  📝 Scenario: {}", scenario.name);
 
         let mut last_keyword = Keyword::Given;
@@ -85,10 +77,7 @@ impl FeatureRunner {
                             return ScenarioResult {
                                 name: scenario.name.clone(),
                                 passed: false,
-                                error: Some(format!(
-                                    "{} {} - {}",
-                                    step.keyword, step.text, e
-                                )),
+                                error: Some(format!("{} {} - {}", step.keyword, step.text, e)),
                             };
                         }
                     }
@@ -120,10 +109,7 @@ impl FeatureRunner {
     }
 
     /// Print a summary of the test run
-    fn print_summary(
-        &self,
-        results: &[ScenarioResult],
-    ) {
+    fn print_summary(&self, results: &[ScenarioResult]) {
         let passed = results.iter().filter(|r| r.passed).count();
         let failed = results.iter().filter(|r| !r.passed).count();
 
@@ -132,7 +118,9 @@ impl FeatureRunner {
 
         for result in results {
             // Only print errors for failed scenarios
-            if !result.passed && let Some(ref error) = result.error {
+            if !result.passed
+                && let Some(ref error) = result.error
+            {
                 println!("  ❌ {}: {}", result.name, error);
             }
         }

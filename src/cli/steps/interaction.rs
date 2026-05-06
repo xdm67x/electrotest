@@ -234,9 +234,11 @@ impl StepHandler for TypeTextStep {
 
                 let result = ctx.cdp_client.evaluate(&script).await?;
 
-                if result.contains("not found") {{
-                    anyhow::bail!("Element '{selector}' not found");
-                }}
+                if result.contains("not found") {
+                    {
+                        anyhow::bail!("Element '{selector}' not found");
+                    }
+                }
 
                 println!("✓ Typed text into {selector}");
                 Ok(())

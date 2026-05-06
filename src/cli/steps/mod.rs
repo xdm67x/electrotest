@@ -54,7 +54,10 @@ impl StepRegistry {
 
     /// Find a handler that can handle the given step
     pub fn find_handler(&self, step: &Step) -> Option<&dyn StepHandler> {
-        self.handlers.iter().find(|h| h.can_handle(step)).map(|b| b.as_ref())
+        self.handlers
+            .iter()
+            .find(|h| h.can_handle(step))
+            .map(|b| b.as_ref())
     }
 }
 

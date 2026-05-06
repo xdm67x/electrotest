@@ -12,16 +12,14 @@ use serde_json::json;
 use tokio::net::TcpStream;
 use tokio::sync::{Mutex, RwLock, oneshot};
 use tokio::time::timeout;
-use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::{MaybeTlsStream, WebSocketStream, connect_async};
 
 use crate::cdp::messages::{CdpRequest, CdpResponse, EvaluateResult, MessageId, TargetInfo};
 
 /// Type for WebSocket writer
-pub type WsWriter = futures_util::stream::SplitSink<
-    WebSocketStream<MaybeTlsStream<TcpStream>>,
-    Message,
->;
+pub type WsWriter =
+    futures_util::stream::SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 
 /// Type alias for the WebSocket writer stored in CdpClient
 /// This makes the CdpClient struct definition cleaner and more readable
@@ -128,7 +126,8 @@ impl CdpClient {
     }
 
     /// Send a CDP request and await response
-    async fn send_request(&self,
+    async fn send_request(
+        &self,
         method: &str,
         params: Option<serde_json::Value>,
     ) -> Result<CdpResponse> {
@@ -244,7 +243,9 @@ impl CdpClient {
             "fromSurface": true,
         });
 
-        let response = self.send_request("Page.captureScreenshot", Some(params)).await?;
+        let response = self
+            .send_request("Page.captureScreenshot", Some(params))
+            .await?;
 
         if let Some(error) = response.error {
             bail!("CDP error {}: {}", error.code, error.message);

@@ -83,10 +83,7 @@ impl StepHandler for ElementVisibleStep {
         }
 
         if result.contains("hidden") {
-            return Err(anyhow::anyhow!(
-                "Element '{}' is not visible",
-                selector
-            ));
+            return Err(anyhow::anyhow!("Element '{}' is not visible", selector));
         }
 
         println!("✓ Element '{}' is visible", selector);

@@ -52,7 +52,6 @@ pub fn detect_electron_path(start_path: &Path) -> Option<PathBuf> {
     None
 }
 
-
 /// Launches and manages an Electron application process
 pub struct AppLauncher {
     child: Child,
@@ -64,27 +63,30 @@ impl AppLauncher {
     /// Un port est considéré disponible si la connexion TCP échoue (port libre)
     pub async fn find_available_port(base_port: u16) -> Result<u16> {
         use tokio::net::TcpStream;
-        
+
         for offset in 0..MAX_PORT_ATTEMPTS {
             let port = base_port
                 .checked_add(offset)
                 .ok_or_else(|| anyhow!("Port overflow after {} attempts", MAX_PORT_ATTEMPTS))?;
-            
+
             // Essayer de se connecter en TCP directement
             let addr = format!("127.0.0.1:{}", port);
-            
+
             // Utiliser un timeout court pour éviter de bloquer
-            match tokio::time::timeout(
-                Duration::from_millis(100),
-                TcpStream::connect(&addr)
-            ).await {
+            match tokio::time::timeout(Duration::from_millis(100), TcpStream::connect(&addr)).await
+            {
                 Ok(Ok(_)) => {
                     // Connexion réussie - port est occupé
                     // Vérifier si c'est un serveur CDP valide
                     let client = reqwest::Client::new();
                     let url = format!("http://127.0.0.1:{}/json/list", port);
-                    
-                    match client.get(&url).timeout(Duration::from_millis(100)).send().await {
+
+                    match client
+                        .get(&url)
+                        .timeout(Duration::from_millis(100))
+                        .send()
+                        .await
+                    {
                         Ok(response) if response.status().is_success() => {
                             // Port est occupé par un serveur CDP
                             continue;
@@ -102,7 +104,7 @@ impl AppLauncher {
                 }
             }
         }
-        
+
         bail!(
             "Could not find an available CDP port after trying {} ports starting from {}",
             MAX_PORT_ATTEMPTS,
@@ -111,7 +113,7 @@ impl AppLauncher {
     }
 
     /// Lance une application Electron avec --remote-debugging-port
-    /// 
+    ///
     /// Construit la commande: `{electron_path} {app_path} --remote-debugging-port={port} {app_args}`
     pub fn launch(
         electron_path: &Path,
@@ -125,34 +127,32 @@ impl AppLauncher {
         let app_path_str = app_path
             .to_str()
             .ok_or_else(|| anyhow!("Invalid app path: {:?}", app_path))?;
-        
+
         // Construire les arguments de la commande
         let mut args = vec![
             app_path_str.to_string(),
             format!("--remote-debugging-port={}", port),
         ];
-        
+
         // Ajouter les arguments supplémentaires si fournis
         if !extra_args.is_empty() {
             args.extend(extra_args.split_whitespace().map(|s| s.to_string()));
         }
-        
-        println!("🚀 Launching Electron: {} {}", electron_path_str, args.join(" "));
-        
+
+        println!(
+            "🚀 Launching Electron: {} {}",
+            electron_path_str,
+            args.join(" ")
+        );
+
         // Lancer le processus
         let child = Command::new(electron_path_str)
             .args(&args)
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
             .spawn()
-            .map_err(|e| {
-                anyhow!(
-                    "Failed to launch Electron at {:?}: {}",
-                    electron_path,
-                    e
-                )
-            })?;
-        
+            .map_err(|e| anyhow!("Failed to launch Electron at {:?}: {}", electron_path, e))?;
+
         Ok(Self { child, port })
     }
 
@@ -161,7 +161,7 @@ impl AppLauncher {
         let client = reqwest::Client::new();
         let url = format!("http://127.0.0.1:{}/json/list", self.port);
         let start = Instant::now();
-        
+
         loop {
             if start.elapsed() > CDP_WAIT_TIMEOUT {
                 bail!(
@@ -170,7 +170,7 @@ impl AppLauncher {
                     CDP_WAIT_TIMEOUT
                 );
             }
-            
+
             match client.get(&url).send().await {
                 Ok(response) => {
                     if response.status().is_success()
@@ -185,7 +185,7 @@ impl AppLauncher {
                     // Connection refused, continuer
                 }
             }
-            
+
             sleep(Duration::from_millis(500)).await;
         }
     }
@@ -199,36 +199,42 @@ impl AppLauncher {
     pub fn kill(&mut self) -> Result<()> {
         let pid = self.child.id();
         println!("💀 Killing Electron process {}...", pid);
-        
+
         // Tuer tous les processus enfants (renderers, GPU, etc.) D'ABORD
         // Electron lance des processus enfants qui ne meurent pas avec le parent
         self.kill_child_processes(pid, self.port);
-        
+
         // Tuer le processus principal
         let _ = self.child.kill();
-        
+
         // Attendre la terminaison du processus principal
         match self.child.wait() {
             Ok(status) => {
-                println!("✅ Electron process {} terminated with status: {}", pid, status);
+                println!(
+                    "✅ Electron process {} terminated with status: {}",
+                    pid, status
+                );
             }
             Err(e) => {
                 println!("⚠️  Electron process {} failed to wait: {}", pid, e);
             }
         }
-        
+
         Ok(())
     }
 
     /// Tue tous les processus enfants d'Electron
     fn kill_child_processes(&self, parent_pid: u32, port: u16) {
-        println!("  🔍 Killing child processes for port {} (parent PID: {})...", port, parent_pid);
-        
+        println!(
+            "  🔍 Killing child processes for port {} (parent PID: {})...",
+            port, parent_pid
+        );
+
         // Sur Unix/macOS, tuer tous les processus liés à ce port
         #[cfg(unix)]
         {
             use std::process::Command;
-            
+
             // Tuer par port de débogage - le processus principal et le renderer ont cette option
             // On utilise pgrep pour trouver les PIDs puis on les tue directement
             println!("  💀 Finding PIDs with port {}...", port);
@@ -236,43 +242,41 @@ impl AppLauncher {
                 .arg("-f")
                 .arg(format!("remote-debugging-port={}", port))
                 .output();
-            
+
             // Kill all processes using this debugging port
-            if let Ok(output) = output && !output.stdout.is_empty() {
+            if let Ok(output) = output
+                && !output.stdout.is_empty()
+            {
                 let pids = String::from_utf8_lossy(&output.stdout);
                 println!("  📋 Found PIDs: {}", pids.trim());
                 // No need to trim before split_whitespace - it handles leading/trailing whitespace
                 for pid_str in pids.split_whitespace() {
                     println!("  💀 Killing PID {}...", pid_str);
-                    let _ = Command::new("kill")
-                        .arg("-9")
-                        .arg(pid_str)
-                        .status();
+                    let _ = Command::new("kill").arg("-9").arg(pid_str).status();
                 }
             }
-            
+
             // Kill direct children of the parent process
             println!("  💀 Killing children of PID {}...", parent_pid);
             let output = Command::new("pgrep")
                 .arg("-P")
                 .arg(parent_pid.to_string())
                 .output();
-            
+
             // Kill all child processes found
-            if let Ok(output) = output && !output.stdout.is_empty() {
+            if let Ok(output) = output
+                && !output.stdout.is_empty()
+            {
                 let child_pids = String::from_utf8_lossy(&output.stdout);
                 println!("  📋 Found child PIDs: {}", child_pids.trim());
                 // No need to trim before split_whitespace - it handles leading/trailing whitespace
                 for pid_str in child_pids.split_whitespace() {
                     println!("  💀 Killing child PID {}...", pid_str);
-                    let _ = Command::new("kill")
-                        .arg("-9")
-                        .arg(pid_str)
-                        .status();
+                    let _ = Command::new("kill").arg("-9").arg(pid_str).status();
                 }
             }
         }
-        
+
         #[cfg(windows)]
         {
             use std::process::Command;
@@ -286,22 +290,18 @@ impl AppLauncher {
                 .status();
             println!("  📊 taskkill result: {:?}", status);
         }
-        
+
         // Attendre un peu pour laisser le temps aux processus de mourir
         println!("  ⏳ Waiting 500ms for processes to terminate...");
         std::thread::sleep(std::time::Duration::from_millis(500));
         println!("  ✅ Child process cleanup complete");
     }
-
-
 }
-
-
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[tokio::test]
     async fn test_find_available_port() {
         // Tester avec un port qui devrait être libre (port très élevé)
@@ -317,7 +317,10 @@ mod tests {
         let example_path = Path::new("examples/electron-app");
         if example_path.exists() {
             let detected = detect_electron_path(example_path);
-            assert!(detected.is_some(), "Should detect electron in examples/electron-app");
+            assert!(
+                detected.is_some(),
+                "Should detect electron in examples/electron-app"
+            );
             let path = detected.unwrap();
             assert!(path.to_string_lossy().contains("node_modules"));
         }

@@ -18,7 +18,7 @@ use clap::Parser;
 /// Run the CLI application
 pub async fn run() -> Result<()> {
     let args = CliArgs::parse();
-    
+
     // Validate arguments
     args.validate()?;
 
@@ -75,19 +75,14 @@ pub async fn run() -> Result<()> {
 async fn launch_mode(args: &CliArgs) -> Result<(u16, Option<AppLauncher>, u32)> {
     let electron_path = args.resolve_electron_path()?;
     let app_path = args.app_path.as_ref().unwrap();
-    
+
     // Find an available port (auto-increment from base port)
     let port = AppLauncher::find_available_port(args.port).await?;
     println!("🔗 Using CDP port: {}", port);
-    
+
     // Launch the Electron app
-    let launcher = AppLauncher::launch(
-        &electron_path,
-        app_path,
-        port,
-        &args.app_args,
-    )?;
-    
+    let launcher = AppLauncher::launch(&electron_path, app_path, port, &args.app_args)?;
+
     let pid = launcher.pid();
     println!("🔍 Launched Electron process {}...", pid);
 

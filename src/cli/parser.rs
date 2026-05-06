@@ -74,9 +74,7 @@ fn parse_feature(content: &str) -> Result<Feature> {
 
     match feature_name {
         Some(name) => Ok(Feature { name, scenarios }),
-        None => Err(anyhow::anyhow!(
-            "No Feature declaration found in file"
-        )),
+        None => Err(anyhow::anyhow!("No Feature declaration found in file")),
     }
 }
 
