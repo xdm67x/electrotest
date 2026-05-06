@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2026-05-06
+
+### Changes
+- style: apply cargo fmt
+- docs: add cargo fmt requirement before commit
+- chore: remove .vscode directory
+- fix(ci): add rustfmt component to toolchain
+- fix(ci): specify Rust toolchain 1.95.0 in workflows
+- refactor: simplify code for junior devs and fix all clippy warnings
+- ci: add clippy component and update Rust to 1.95.0
+- fix: properly terminate Electron app and all child processes after tests
+- fix(ci): add npm install for electron-app dependencies
+
+**Full Changelog**: https://github.com/xdm67x/electrotest/compare/v0.3.0...v0.4.0
+
 ## [0.3.0] - 2026-03-24
 
 ### Changes
