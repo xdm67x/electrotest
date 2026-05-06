@@ -202,11 +202,98 @@ impl AppLauncher {
         let pid = self.child.id();
         println!("💀 Killing Electron process {}...", pid);
         
-        // Tuer le processus (ne pas attendre - ça peut bloquer)
+        // Tuer tous les processus enfants (renderers, GPU, etc.) D'ABORD
+        // Electron lance des processus enfants qui ne meurent pas avec le parent
+        self.kill_child_processes(pid, self.port);
+        
+        // Tuer le processus principal
         let _ = self.child.kill();
         
-        println!("✅ Electron process {} kill signal sent", pid);
+        // Attendre la terminaison du processus principal
+        match self.child.wait() {
+            Ok(status) => {
+                println!("✅ Electron process {} terminated with status: {}", pid, status);
+            }
+            Err(e) => {
+                println!("⚠️  Electron process {} failed to wait: {}", pid, e);
+            }
+        }
+        
         Ok(())
+    }
+
+    /// Tue tous les processus enfants d'Electron
+    fn kill_child_processes(&self, parent_pid: u32, port: u16) {
+        println!("  🔍 Killing child processes for port {} (parent PID: {})...", port, parent_pid);
+        
+        // Sur Unix/macOS, tuer tous les processus liés à ce port
+        #[cfg(unix)]
+        {
+            use std::process::Command;
+            
+            // Tuer par port de débogage - le processus principal et le renderer ont cette option
+            // On utilise pgrep pour trouver les PIDs puis on les tue directement
+            println!("  💀 Finding PIDs with port {}...", port);
+            let output = Command::new("pgrep")
+                .arg("-f")
+                .arg(format!("remote-debugging-port={}", port))
+                .output();
+            
+            if let Ok(output) = output {
+                if !output.stdout.is_empty() {
+                    let pids = String::from_utf8_lossy(&output.stdout);
+                    println!("  📋 Found PIDs: {}", pids.trim());
+                    // Tuer chaque PID trouvé
+                    for pid_str in pids.trim().split_whitespace() {
+                        println!("  💀 Killing PID {}...", pid_str);
+                        let _ = Command::new("kill")
+                            .arg("-9")
+                            .arg(pid_str)
+                            .status();
+                    }
+                }
+            }
+            
+            // Tuer aussi les enfants directs du processus parent
+            println!("  💀 Killing children of PID {}...", parent_pid);
+            let output = Command::new("pgrep")
+                .arg("-P")
+                .arg(parent_pid.to_string())
+                .output();
+            
+            if let Ok(output) = output {
+                if !output.stdout.is_empty() {
+                    let child_pids = String::from_utf8_lossy(&output.stdout);
+                    println!("  📋 Found child PIDs: {}", child_pids.trim());
+                    for pid_str in child_pids.trim().split_whitespace() {
+                        println!("  💀 Killing child PID {}...", pid_str);
+                        let _ = Command::new("kill")
+                            .arg("-9")
+                            .arg(pid_str)
+                            .status();
+                    }
+                }
+            }
+        }
+        
+        #[cfg(windows)]
+        {
+            use std::process::Command;
+            // Sur Windows, tuer par PID parent avec /T pour tuer les enfants aussi
+            println!("  💀 Running: taskkill /F /T /PID {}", _parent_pid);
+            let status = Command::new("taskkill")
+                .arg("/F")
+                .arg("/T")
+                .arg("/PID")
+                .arg(_parent_pid.to_string())
+                .status();
+            println!("  📊 taskkill result: {:?}", status);
+        }
+        
+        // Attendre un peu pour laisser le temps aux processus de mourir
+        println!("  ⏳ Waiting 500ms for processes to terminate...");
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        println!("  ✅ Child process cleanup complete");
     }
 
 
