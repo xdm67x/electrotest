@@ -73,7 +73,7 @@ pub async fn run() -> Result<()> {
 
 /// Launch mode: start Electron with --remote-debugging-port, wait for CDP
 async fn launch_mode(args: &CliArgs) -> Result<(u16, Option<AppLauncher>, u32)> {
-    let electron_path = args.electron_path.as_ref().unwrap();
+    let electron_path = args.resolve_electron_path()?;
     let app_path = args.app_path.as_ref().unwrap();
     
     // Find an available port (auto-increment from base port)
@@ -82,7 +82,7 @@ async fn launch_mode(args: &CliArgs) -> Result<(u16, Option<AppLauncher>, u32)> 
     
     // Launch the Electron app
     let launcher = AppLauncher::launch(
-        electron_path,
+        &electron_path,
         app_path,
         port,
         &args.app_args,

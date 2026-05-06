@@ -3,10 +3,13 @@
 //! and gracefully shutting down the process.
 
 use anyhow::{Result, anyhow, bail};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 use tokio::time::sleep;
+
+/// Maximum number of parent directories to search for node_modules
+const MAX_PARENT_LEVELS: usize = 5;
 
 /// Maximum number of ports to try when auto-incrementing
 const MAX_PORT_ATTEMPTS: u16 = 10;
@@ -14,6 +17,40 @@ const MAX_PORT_ATTEMPTS: u16 = 10;
 /// Timeout for waiting on CDP to become available
 const CDP_WAIT_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// Detect Electron executable path from a project directory.
+/// Searches for node_modules/.bin/electron (Unix) or node_modules/.bin/electron.cmd (Windows).
+/// Walks up parent directories (max 5 levels) for monorepo support.
+/// Returns the first valid executable path found, or None if not found.
+pub fn detect_electron_path(start_path: &Path) -> Option<PathBuf> {
+    // Determine the search root: if start_path is a file, use its parent directory
+    let search_root = if start_path.is_file() {
+        start_path.parent()?
+    } else {
+        start_path
+    };
+
+    // Check current directory and up to MAX_PARENT_LEVELS parent levels
+    let mut current = search_root.to_path_buf();
+    for _ in 0..=MAX_PARENT_LEVELS {
+        // Check Unix executable
+        let bin_electron = current.join("node_modules/.bin/electron");
+        if bin_electron.exists() {
+            return Some(bin_electron);
+        }
+
+        // Check Windows batch file
+        let bin_electron_cmd = current.join("node_modules/.bin/electron.cmd");
+        if bin_electron_cmd.exists() {
+            return Some(bin_electron_cmd);
+        }
+
+        // Move up one level
+        if !current.pop() {
+            break;
+        }
+    }
+    None
+}
 
 
 /// Launches and manages an Electron application process
@@ -188,5 +225,17 @@ mod tests {
         assert!(port.is_ok());
         let port = port.unwrap();
         assert!(port >= 29999 && port < 29999 + MAX_PORT_ATTEMPTS);
+    }
+
+    #[test]
+    fn test_detect_electron_path() {
+        // Test with the example electron-app which has node_modules
+        let example_path = Path::new("examples/electron-app");
+        if example_path.exists() {
+            let detected = detect_electron_path(example_path);
+            assert!(detected.is_some(), "Should detect electron in examples/electron-app");
+            let path = detected.unwrap();
+            assert!(path.to_string_lossy().contains("node_modules"));
+        }
     }
 }

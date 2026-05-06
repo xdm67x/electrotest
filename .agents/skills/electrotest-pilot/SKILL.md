@@ -27,8 +27,8 @@ This skill enables an AI agent to automate an Electron application by generating
 | `feature_path` | No | Path where the `.feature` file should be written. Defaults to `./test.feature` or a sensible location in the project. |
 | `output_dir` | No | Directory for screenshots. Defaults to `./output`. |
 | `pid` | No | The PID of the Electron process (connect mode). If omitted, the agent can either auto-discover it or use launch mode. |
-| `electron_path` | No | Path to the Electron executable (launch mode). When provided with `app_path`, the agent will use launch mode. |
-| `app_path` | No | Path to your Electron app directory or main file (launch mode). When provided with `electron_path`, the agent will use launch mode. |
+| `electron_path` | No | Path to the Electron executable (launch mode). Optional - if omitted, electrotest will auto-detect from `app_path/node_modules/.bin/electron`. When provided with `app_path`, the agent will use launch mode. |
+| `app_path` | No | Path to your Electron app directory or main file (launch mode). When provided (with optional `electron_path`), the agent will use launch mode. Electrotest will auto-detect the Electron executable from `node_modules/.bin/` if `electron_path` is not provided. |
 | `port` | No | Port for remote debugging. Defaults to `9222`, auto-incremented if in use. |
 
 ## Outputs
@@ -40,8 +40,9 @@ This skill enables an AI agent to automate an Electron application by generating
 ## Architecture Context
 
 - **Entry point (connect mode)**: `electrotest --pid <PID> --features <PATH> --output-dir <DIR>`
-- **Entry point (launch mode)**: `electrotest --electron-path <PATH> --app-path <PATH> --features <PATH> --port <PORT>`
-- **Connection**: In connect mode, discovers the Electron process, extracts `--remote-debugging-port`, connects via CDP over WebSocket. In launch mode, starts Electron with `--remote-debugging-port` automatically.
+- **Entry point (launch mode)**: `electrotest --app-path <PATH> --features <PATH> --port <PORT>` (auto-detects Electron from `node_modules/.bin/`)
+- **Entry point (launch mode, explicit)**: `electrotest --electron-path <PATH> --app-path <PATH> --features <PATH> --port <PORT>`
+- **Connection**: In connect mode, discovers the Electron process, extracts `--remote-debugging-port`, connects via CDP over WebSocket. In launch mode, starts Electron with `--remote-debugging-port` automatically and can auto-detect the Electron executable from `node_modules/.bin/`.
 - **Execution**: Runs each scenario step-by-step. `And`/`But` keywords resolve to the previous non-And/But keyword.
 - **Screenshots**: Saved to the `--output-dir` as PNG files.
 - **Cleanup**: In launch mode, the Electron process is automatically terminated after tests complete.
@@ -73,7 +74,7 @@ Before generating or running any feature file, verify:
    electron --remote-debugging-port=9222 .
    ```
 
-   **Option B - Launch mode**: If you have `electron_path` and `app_path` inputs, electrotest can launch the app automatically with the `--remote-debugging-port` flag. No manual startup needed.
+   **Option B - Launch mode**: If you have `app_path` input (with optional `electron_path`), electrotest can launch the app automatically with the `--remote-debugging-port` flag. If `electron_path` is not provided, electrotest will auto-detect it from `node_modules/.bin/electron` in the app path or parent directories. No manual startup needed.
 
 ## Phase 2: Natural Language → Gherkin Translation
 
@@ -179,6 +180,23 @@ cargo run -- --pid <PID> --features <FEATURE_PATH> --output-dir <OUTPUT_DIR>
 ```
 
 ### Launch Mode (automatic)
+
+**With auto-detection (recommended):**
+```bash
+# Binary mode
+electrotest \
+  --app-path <APP_PATH> \
+  --features <FEATURE_PATH> \
+  --output-dir <OUTPUT_DIR>
+
+# Or from source (if inside the electrotest repo)
+cargo run -- \
+  --app-path <APP_PATH> \
+  --features <FEATURE_PATH> \
+  --output-dir <OUTPUT_DIR>
+```
+
+**With explicit Electron path:**
 ```bash
 # Binary mode
 electrotest \
@@ -231,5 +249,5 @@ Parse the CLI stdout and provide a concise summary:
 - **And/But resolution**: The runner automatically resolves `And` and `But` to the previous non-And/But keyword (`Given`, `When`, or `Then`). This means `And I click...` after a `When` is treated as a `When` step.
 - **Click strategy**: The `click` handler first tries the input as a CSS selector (`document.querySelector`), then falls back to searching for an element whose text content exactly matches the input.
 - **No integration tests**: `electrotest` requires a live Electron process. Do not attempt to run it in a headless CI context unless an Electron app is explicitly launched first.
-- **Launch mode**: When using `--electron-path` and `--app-path`, the Electron process will be automatically launched with `--remote-debugging-port` and terminated after tests complete. The port is auto-incremented if the default (9222) is already in use.
+- **Launch mode**: When using `--app-path` (with optional `--electron-path`), the Electron process will be automatically launched with `--remote-debugging-port` and terminated after tests complete. The port is auto-incremented if the default (9222) is already in use. If `--electron-path` is not provided, electrotest will auto-detect it from `node_modules/.bin/electron` in the app path or parent directories (for monorepo support).
 - **Connect mode**: When using `--pid`, the Electron process will **not** be terminated after tests. You must manage the process lifecycle manually.

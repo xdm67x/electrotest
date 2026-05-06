@@ -49,8 +49,19 @@ The application will **remain running** after tests complete.
 
 ### Mode 2: Launch and test (automatic)
 
-Electrotest can automatically launch your Electron app, run tests, and close it:
+Electrotest can automatically launch your Electron app, run tests, and close it.
 
+**With auto-detection of Electron executable:**
+```bash
+electrotest \
+  --app-path /path/to/your/app \
+  --features ./test.feature \
+  --output-dir ./output
+```
+
+Electrotest will automatically detect the Electron executable from `node_modules/.bin/electron` in your project directory (or parent directories for monorepos).
+
+**With explicit Electron path:**
 ```bash
 electrotest \
   --electron-path /path/to/electron \
@@ -84,14 +95,14 @@ Feature: Application smoke test
 | Option | Short | Description | Default |
 |--------|-------|-------------|---------|
 | `--pid` | `-p` | PID of an already running Electron process to connect to | - |
-| `--electron-path` | - | Path to the Electron executable (launch mode) | - |
+| `--electron-path` | - | Path to the Electron executable (launch mode). Optional - auto-detected from `--app-path` if not provided | - |
 | `--app-path` | - | Path to your Electron app directory or main file (launch mode) | - |
 | `--port` | - | Port for remote debugging (auto-incremented if in use) | `9222` |
 | `--app-args` | - | Additional arguments to pass to the Electron app | `""` |
 | `--features` | `-f` | Path to the `.feature` file | Required |
 | `--output-dir` | `-o` | Output directory for screenshots | `./output` |
 
-**Note:** Either `--pid` or both `--electron-path` and `--app-path` must be provided.
+**Note:** Either `--pid` or `--app-path` (with optional `--electron-path`) must be provided.
 
 ## Supported Gherkin Steps
 
