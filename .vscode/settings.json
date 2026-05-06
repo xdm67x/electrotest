@@ -1,5 +1,0 @@
-{
-  "oxc.fmt.configPath": "./examples/electron-app/.oxfmtrc.json",
-  "editor.defaultFormatter": "oxc.oxc-vscode",
-  "editor.formatOnSave": true,
-}
