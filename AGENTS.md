@@ -56,5 +56,6 @@ A helper script for generating the Homebrew formula lives at:
 
 ## Style and Workflow
 
+- Always run `cargo fmt` before committing.
 - Use `cargo fmt` and `cargo clippy` — no custom linter config.
 - Keep `AGENTS.md` in sync if you change architecture or build steps.
