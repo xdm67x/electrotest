@@ -29,13 +29,40 @@ cargo build --release
 
 ## Usage
 
-### 1. Start your Electron app with remote debugging enabled
+Electrotest supports two modes of operation:
+
+### Mode 1: Connect to a running Electron process
+
+#### 1. Start your Electron app with remote debugging enabled
 
 ```bash
 electron --remote-debugging-port=9223 .
 ```
 
-### 2. Create a feature file
+#### 2. Run the tests
+
+```bash
+electrotest --pid <ELECTRON_PID> --features ./test.feature --output-dir ./output
+```
+
+The application will **remain running** after tests complete.
+
+### Mode 2: Launch and test (automatic)
+
+Electrotest can automatically launch your Electron app, run tests, and close it:
+
+```bash
+electrotest \
+  --electron-path /path/to/electron \
+  --app-path /path/to/your/app \
+  --features ./test.feature \
+  --output-dir ./output \
+  --port 9222
+```
+
+The application will be **automatically terminated** after tests complete.
+
+### Create a feature file
 
 Create a `.feature` file describing your test scenarios:
 
@@ -52,19 +79,19 @@ Feature: Application smoke test
     Then the page should contain "Example Domain"
 ```
 
-### 3. Run the tests
-
-```bash
-electrotest --pid <ELECTRON_PID> --features ./test.feature --output-dir ./output
-```
-
 ### Command-line options
 
 | Option | Short | Description | Default |
 |--------|-------|-------------|---------|
-| `--pid` | `-p` | PID of the Electron process to connect to | Required |
+| `--pid` | `-p` | PID of an already running Electron process to connect to | - |
+| `--electron-path` | - | Path to the Electron executable (launch mode) | - |
+| `--app-path` | - | Path to your Electron app directory or main file (launch mode) | - |
+| `--port` | - | Port for remote debugging (auto-incremented if in use) | `9222` |
+| `--app-args` | - | Additional arguments to pass to the Electron app | `""` |
 | `--features` | `-f` | Path to the `.feature` file | Required |
 | `--output-dir` | `-o` | Output directory for screenshots | `./output` |
+
+**Note:** Either `--pid` or both `--electron-path` and `--app-path` must be provided.
 
 ## Supported Gherkin Steps
 
