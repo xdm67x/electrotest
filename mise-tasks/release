@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+#MISE description="Release: bump Cargo.toml/Cargo.lock to MAJOR.MINOR.PATCH, commit, tag vX.Y.Z, push main + tag"
+set -euo pipefail
+
+usage() {
+  echo "usage: mise run release <major> <minor> <patch>"
+}
+
+if [ "$#" -ne 3 ]; then
+  echo "error: expected exactly 3 arguments (major minor patch)" >&2
+  usage >&2
+  exit 1
+fi
+
+MAJOR="$1" MINOR="$2" PATCH="$3"
+for part in "$MAJOR" "$MINOR" "$PATCH"; do
+  if ! [[ "$part" =~ ^[0-9]+$ ]]; then
+    echo "error: '$part' is not a non-negative integer" >&2
+    exit 1
+  fi
+done
+
+VERSION="$MAJOR.$MINOR.$PATCH"
+TAG="v$VERSION"
+
+# Pre-flight checks: releases are cut from a clean main branch, one tag per version.
+BRANCH="$(git branch --show-current)"
+if [ "$BRANCH" != "main" ]; then
+  echo "error: releases must be cut from main (currently on: ${BRANCH:-<detached>})" >&2
+  exit 1
+fi
+
+if [ -n "$(git status --porcelain)" ]; then
+  echo "error: working tree is not clean; commit or stash your changes first" >&2
+  exit 1
+fi
+
+if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+  echo "error: tag $TAG already exists" >&2
+  exit 1
+fi
+
+CURRENT_VERSION="$(grep -m1 '^version = "' Cargo.toml | sed 's/^version = "\(.*\)"/\1/')"
+if [ -z "$CURRENT_VERSION" ]; then
+  echo "error: could not read the current version from Cargo.toml" >&2
+  exit 1
+fi
+if [ "$CURRENT_VERSION" = "$VERSION" ]; then
+  echo "error: Cargo.toml is already at version $VERSION" >&2
+  exit 1
+fi
+
+echo "Releasing $CURRENT_VERSION -> $VERSION"
+
+# Replace only the first line-start `version = "..."` (the [package] version);
+# dependency versions are mid-line and never match.
+NEW_VERSION="$VERSION" perl -pi -e 'if (/^version = "/ && !$done) { s/^version = ".*"/version = "$ENV{NEW_VERSION}"/; $done = 1 }' Cargo.toml
+
+BUMPED="$(grep -m1 '^version = "' Cargo.toml | sed 's/^version = "\(.*\)"/\1/')"
+if [ "$BUMPED" != "$VERSION" ]; then
+  echo "error: failed to update Cargo.toml (still at '$BUMPED')" >&2
+  exit 1
+fi
+
+# Sync the workspace member version in Cargo.lock without touching dependencies.
+cargo update --workspace
+
+git add Cargo.toml Cargo.lock
+git commit -m "chore: bump version to $VERSION"
+git tag -a "$TAG" -m "Release $TAG"
+
+git push origin main
+git push origin "$TAG"
+
+echo "Released $TAG — release CI: https://github.com/xdm67x/electrotest/actions/workflows/release.yml"

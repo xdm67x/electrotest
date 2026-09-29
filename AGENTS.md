@@ -15,6 +15,7 @@ cargo run -- --pid 12345 --features ./examples/features/test.feature --output-di
 mise run build             # debug build (cargo build)
 mise run build-release     # release build (cargo build --release)
 mise run clean             # remove build artifacts (cargo clean)
+mise run release <major> <minor> <patch>  # bump version, commit, tag vX.Y.Z, push main + tag
 ```
 
 ## Toolchain
@@ -70,6 +71,8 @@ Electrotest is a CLI that runs Gherkin `.feature` files against an Electron proc
 ## Release Workflow
 
 Release automation is documented as a skill at `.agents/skills/electrotest-release/SKILL.md`. The full sequence covers version bumping, changelog generation, git tagging, CI monitoring, and Homebrew tap updates.
+
+The core release sequence is automated as a mise task: `mise run release <major> <minor> <patch>` (in `mise-tasks/release`) updates the version in `Cargo.toml`/`Cargo.lock`, commits with `chore: bump version to X.Y.Z`, creates an annotated `vX.Y.Z` tag, and pushes main + tag. Changelog generation and Homebrew tap updates remain manual steps per the skill.
 
 A helper script for generating the Homebrew formula lives at:
 `.agents/skills/electrotest-release/scripts/update-homebrew.sh`
