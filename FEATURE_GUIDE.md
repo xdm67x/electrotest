@@ -33,6 +33,42 @@ Feature files use standard Gherkin syntax with Given/When/Then keywords.
 - `When I wait <N> seconds`
   - Waits for N seconds
   - Example: `When I wait 2 seconds`
+- `When I wait for "<SELECTOR>"`
+  - Waits for an element to appear in the DOM (10s timeout)
+  - Example: `When I wait for "#result"`
+- `When I type "<TEXT>" into "<SELECTOR>"`
+  - Types text into an input, dispatching keydown/keypress/input/change events
+  - Example: `When I type "hello" into "#name-input"`
+- `When I clear "<SELECTOR>"`
+  - Clears the value of an input or textarea
+  - Example: `When I clear "#name-input"`
+- `When I press "<KEY>"`
+  - Presses a key on the focused element (or document body)
+  - Example: `When I press "Enter"`
+- `When I press "<KEY>" on "<SELECTOR>"`
+  - Focuses the element and presses a key on it
+  - Example: `When I press "Enter" on "#search-input"`
+- `When I double-click on "<SELECTOR>"`
+  - Double-clicks an element via CSS selector
+  - Example: `When I double-click on "#item"`
+- `When I hover over "<SELECTOR>"`
+  - Hovers over an element (mouseover/mouseenter/mousemove events)
+  - Example: `When I hover over "#menu"`
+- `When I select "<VALUE>" from "<SELECTOR>"`
+  - Selects an option from a `<select>` dropdown by value or label
+  - Example: `When I select "fr" from "#language"`
+- `When I scroll down by <N> pixels` / `When I scroll up by <N> pixels`
+  - Scrolls the page by N pixels
+  - Example: `When I scroll down by 500 pixels`
+- `When I scroll to "<SELECTOR>"`
+  - Scrolls an element into view
+  - Example: `When I scroll to "#footer"`
+- `When I scroll to top` / `When I scroll to bottom`
+  - Scrolls to the top or bottom of the page
+  - Example: `When I scroll to bottom`
+- `When I reload the page`
+  - Reloads the current page
+  - Example: `When I reload the page`
 
 ### Assertions (Then)
 
@@ -44,9 +80,33 @@ Feature files use standard Gherkin syntax with Given/When/Then keywords.
   - Verifies an element is visible
   - Example: `Then the element "#status" should be visible`
 
+- `Then the page should not contain "<TEXT>"`
+  - Verifies the page does not contain the text
+  - Example: `Then the page should not contain "Error"`
 - `Then the page title should be "<TITLE>"`
   - Verifies the page title
   - Example: `Then the page title should be "Dashboard"`
+- `Then the element "<SELECTOR>" should not be visible`
+  - Verifies an element is not visible
+  - Example: `Then the element "#modal" should not be visible`
+- `Then the element "<SELECTOR>" should exist` / `should not exist`
+  - Verifies an element is present in (or absent from) the DOM
+  - Example: `Then the element "#logo" should exist`
+- `Then the element "<SELECTOR>" should contain "<TEXT>"`
+  - Verifies an element's text content
+  - Example: `Then the element "#status" should contain "Active"`
+- `Then the value of "<SELECTOR>" should be "<VALUE>"`
+  - Verifies the value of an input, textarea, or select
+  - Example: `Then the value of "#name-input" should be "Alice"`
+- `Then the element "<SELECTOR>" should be enabled` / `should be disabled`
+  - Verifies an element's enabled/disabled state
+  - Example: `Then the element "#submit-btn" should be enabled`
+- `Then I should see <N> elements "<SELECTOR>"`
+  - Verifies the number of matching elements
+  - Example: `Then I should see 3 elements ".item"`
+- `Then the URL should be "<URL>"` / `Then the URL should contain "<TEXT>"`
+  - Verifies the current page URL
+  - Example: `Then the URL should contain "dashboard"`
 
 ### And/But Keywords
 
