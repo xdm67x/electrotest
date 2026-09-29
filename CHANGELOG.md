@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2026-09-29
+
+### Changes
+- chore(release): fold changelog generation into the mise release task
+- chore(toolchain): remove rust-toolchain.toml after mise migration
+- docs(contributing): add commit message conventions
+- chore: add mise release task
+- chore: remove CLAUDE.md
+- ci: manage Rust toolchain with mise locally and in CI
+- feat: add comprehensive Gherkin steps for input, keyboard, scroll, and assertions (#5)
+- chore: update Rust toolchain, dependencies, and example Electron app (#4)
+- Add CODEOWNERS with xdm67x as owner for all files
+- docs: update AGENTS.md with current codebase structure
+
+**Full Changelog**: https://github.com/xdm67x/electrotest/compare/v0.4.0...v0.5.0
+
 ## [0.4.0] - 2026-05-06
 
 ### Changes
