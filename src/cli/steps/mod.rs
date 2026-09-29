@@ -40,7 +40,23 @@ impl StepRegistry {
         registry.register(Box::new(interaction::ScreenshotStep));
         registry.register(Box::new(interaction::WaitStep));
         registry.register(Box::new(interaction::TypeTextStep));
+        registry.register(Box::new(interaction::PressKeyStep));
+        registry.register(Box::new(interaction::DoubleClickStep));
+        registry.register(Box::new(interaction::HoverStep));
+        registry.register(Box::new(interaction::ClearInputStep));
+        registry.register(Box::new(interaction::SelectOptionStep));
+        registry.register(Box::new(interaction::ScrollStep));
+        registry.register(Box::new(interaction::WaitForElementStep));
+        registry.register(Box::new(interaction::ReloadStep));
         registry.register(Box::new(assertion::PageContainsStep));
+        registry.register(Box::new(assertion::PageNotContainsStep));
+        registry.register(Box::new(assertion::ElementExistsStep));
+        registry.register(Box::new(assertion::ElementContainsStep));
+        registry.register(Box::new(assertion::ElementCountStep));
+        registry.register(Box::new(assertion::InputValueStep));
+        registry.register(Box::new(assertion::ElementEnabledStep));
+        registry.register(Box::new(assertion::UrlStep));
+        registry.register(Box::new(assertion::ElementNotVisibleStep));
         registry.register(Box::new(assertion::ElementVisibleStep));
         registry.register(Box::new(assertion::PageTitleStep));
 

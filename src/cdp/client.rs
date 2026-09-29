@@ -284,6 +284,12 @@ impl CdpClient {
         Ok(())
     }
 
+    /// Reload the current page
+    pub async fn reload(&self) -> Result<()> {
+        self.send_request("Page.reload", None).await?;
+        Ok(())
+    }
+
     /// Get the page title
     pub async fn get_title(&self) -> Result<String> {
         self.evaluate("document.title").await

@@ -11,7 +11,8 @@ Electrotest enables you to write end-to-end tests for Electron applications usin
 - **Gherkin-based testing**: Write tests in natural language using `.feature` files
 - **CDP integration**: Connects directly to Electron's remote debugging protocol
 - **Screenshot capture**: Automatically capture screenshots during test execution
-- **Navigation & interaction**: Navigate to URLs, interact with elements, and verify page content
+- **Navigation & interaction**: Navigate to URLs, fill inputs, press keys, click, double-click, hover, select options, scroll, and reload
+- **Rich assertions**: Verify page text, titles, element visibility/existence/content, input values, element counts, enabled state, and URLs
 - **Async runtime**: Built on Tokio for efficient async operations
 
 ## Installation
