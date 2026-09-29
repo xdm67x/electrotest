@@ -14,7 +14,7 @@ cargo run -- --pid 12345 --features ./examples/features/test.feature --output-di
 
 ## Toolchain
 
-- Rust is pinned to **1.95.0** in `rust-toolchain.toml`.
+- Rust is pinned to **1.98.1** in `rust-toolchain.toml`.
 - Cross-compilation targets are declared there (`aarch64-apple-darwin`, `x86_64-pc-windows-msvc`, `x86_64-unknown-linux-musl`).
 - CI release builds for all three targets on tag push (`v*`).
 
@@ -29,7 +29,7 @@ Electrotest is a CLI that runs Gherkin `.feature` files against an Electron proc
 - `src/cli/launcher.rs` — Electron process management. Handles starting Electron with `--remote-debugging-port`, auto-finding available ports, waiting for CDP availability, and gracefully killing the process tree (including child renderers).
 - `src/cli/feature.rs` — Data structures: `Feature`, `Scenario`, `Step`, and `Keyword` enum (Given, When, Then, And, But).
 - `src/cli/parser.rs` — regex-based Gherkin parser.
-- `src/cli/runner.rs` — orchestrates scenario execution. **And/But keywords resolve to the previous non-And/But keyword** here.
+- `src/cli/runner.rs` — orchestrates scenario execution. **And/But keywords resolve to the previous non-And/But keyword**, with fallback to the other keyword types when no handler matches the inherited keyword.
 - `src/cli/context.rs` — shared mutable state (CDP client, output dir, window size).
 - `src/cli/steps/` — trait-based step handlers (`StepHandler`).
   - `mod.rs` — `StepRegistry` with all handlers registered.

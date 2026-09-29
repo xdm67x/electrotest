@@ -170,7 +170,8 @@ The CDP client sends commands to control the browser (navigate, resize, execute 
 cargo test
 
 # Run with example
-cargo run -- --pid 12345 --features ./examples/features/test.feature
+# Run the bundled example end-to-end (launches the sample Electron app automatically)
+cargo run -- --app-path ./examples/electron-app --features ./examples/features/example-app.feature --output-dir ./output
 ```
 
 ## License

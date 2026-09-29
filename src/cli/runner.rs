@@ -61,14 +61,37 @@ impl FeatureRunner {
                 other => other,
             };
 
-            // Find handler
-            let step_with_keyword = Step {
-                keyword: effective_keyword,
-                text: step.text.clone(),
+            // Find handler: try the effective keyword first, then fall back to
+            // the other keyword types so And/But steps can run handlers that
+            // are not registered under the inherited keyword.
+            let candidate_keywords = if matches!(step.keyword, Keyword::And | Keyword::But) {
+                let mut candidates = vec![effective_keyword];
+                for kw in [Keyword::Given, Keyword::When, Keyword::Then] {
+                    if kw != effective_keyword {
+                        candidates.push(kw);
+                    }
+                }
+                candidates
+            } else {
+                vec![effective_keyword]
             };
 
-            match self.registry.find_handler(&step_with_keyword) {
-                Some(handler) => {
+            let handler_with_keyword = candidate_keywords.iter().find_map(|kw| {
+                let step_with_keyword = Step {
+                    keyword: *kw,
+                    text: step.text.clone(),
+                };
+                self.registry
+                    .find_handler(&step_with_keyword)
+                    .map(|h| (h, *kw))
+            });
+
+            match handler_with_keyword {
+                Some((handler, resolved_keyword)) => {
+                    let step_with_keyword = Step {
+                        keyword: resolved_keyword,
+                        text: step.text.clone(),
+                    };
                     match handler.execute(&step_with_keyword, ctx).await {
                         Ok(_) => {
                             // Step passed
