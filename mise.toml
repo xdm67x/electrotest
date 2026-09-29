@@ -1,7 +1,8 @@
 # Tool versions for this repo — used by mise locally and via jdx/mise-action in CI.
-# Keep `rust.version` in sync with the channel in `rust-toolchain.toml`.
-# Cross-compilation targets stay in `rust-toolchain.toml` (used by plain-rustup
-# workflows); install extra targets with `rustup target add <target>`.
+# This is the single source of truth for the Rust version and its components.
+# Cross-compilation targets are not installed here to keep local installs lean;
+# add them on demand with `rustup target add <target>` (the release CI workflow
+# installs each matrix target itself).
 [tools]
 rust = { version = "1.98.1", profile = "minimal", components = ["clippy", "rustfmt"] }
 

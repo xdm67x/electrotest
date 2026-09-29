@@ -20,8 +20,8 @@ mise run release <major> <minor> <patch>  # bump version, commit, tag vX.Y.Z, pu
 
 ## Toolchain
 
-- Rust is managed with **mise** — see `mise.toml` for the pinned version (**1.98.1**), install profile, and `clippy`/`rustfmt` components. Run `mise install` locally to set it up.
-- `rust-toolchain.toml` pins the same channel for plain-rustup users and declares the cross-compilation targets (`aarch64-apple-darwin`, `x86_64-pc-windows-msvc`, `x86_64-unknown-linux-musl`). Keep its channel in sync with `mise.toml`.
+- Rust is managed with **mise** — see `mise.toml` for the pinned version (**1.98.1**), install profile, and `clippy`/`rustfmt` components. Run `mise install` locally to set it up. `mise.toml` is the single source of truth for the toolchain.
+- Cross-compilation targets (`aarch64-apple-darwin`, `x86_64-pc-windows-msvc`, `x86_64-unknown-linux-musl`) are installed on demand with `rustup target add <target>`; the release workflow adds each matrix target itself.
 - CI installs the toolchain with `jdx/mise-action@v4` (reads `mise.toml`); the release workflow adds each matrix target with `rustup target add`.
 - CI release builds for all three targets on tag push (`v*`).
 

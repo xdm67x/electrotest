@@ -9,7 +9,7 @@ This skill automates the complete release workflow for the electrotest project (
 
 ## Targets
 
-The project builds for 3 targets as defined in `rust-toolchain.toml`:
+The project builds for 3 targets as defined in the release workflow matrix (`.github/workflows/release.yml`):
 - `aarch64-apple-darwin` - macOS ARM (Apple Silicon)
 - `x86_64-pc-windows-msvc` - Windows x86_64
 - `x86_64-unknown-linux-musl` - Linux x86_64 (musl for static linking)
