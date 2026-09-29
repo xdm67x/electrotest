@@ -1,0 +1,18 @@
+# Tool versions for this repo — used by mise locally and via jdx/mise-action in CI.
+# Keep `rust.version` in sync with the channel in `rust-toolchain.toml`.
+# Cross-compilation targets stay in `rust-toolchain.toml` (used by plain-rustup
+# workflows); install extra targets with `rustup target add <target>`.
+[tools]
+rust = { version = "1.98.1", profile = "minimal", components = ["clippy", "rustfmt"] }
+
+[tasks.build]
+description = "Build the electrotest binary in debug mode"
+run = "cargo build"
+
+[tasks.build-release]
+description = "Build the electrotest binary in release mode"
+run = "cargo build --release"
+
+[tasks.clean]
+description = "Remove all build artifacts (target directory)"
+run = "cargo clean"
