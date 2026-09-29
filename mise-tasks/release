@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Release: bump Cargo.toml/Cargo.lock to MAJOR.MINOR.PATCH, commit, tag vX.Y.Z, push main + tag"
+#MISE description="Release: bump Cargo.toml/Cargo.lock to MAJOR.MINOR.PATCH, regenerate CHANGELOG.md, commit, tag vX.Y.Z, push main + tag"
 set -euo pipefail
 
 usage() {
@@ -65,7 +65,47 @@ fi
 # Sync the workspace member version in Cargo.lock without touching dependencies.
 cargo update --workspace
 
-git add Cargo.toml Cargo.lock
+# Regenerate CHANGELOG.md with a new section listing all commits since the last tag.
+LAST_TAG="$(git describe --tags --abbrev=0 2>/dev/null || true)"
+TODAY="$(date +%Y-%m-%d)"
+SECTION_FILE="$(mktemp)"
+trap 'rm -f "$SECTION_FILE"' EXIT
+{
+  echo "## [$VERSION] - $TODAY"
+  echo
+  echo "### Changes"
+  if [ -n "$LAST_TAG" ]; then
+    git log "$LAST_TAG"..HEAD --pretty=format:"- %s" --no-merges
+  else
+    git log --pretty=format:"- %s" --no-merges
+  fi
+  echo
+  echo
+  if [ -n "$LAST_TAG" ]; then
+    echo "**Full Changelog**: https://github.com/xdm67x/electrotest/compare/$LAST_TAG...$TAG"
+  else
+    echo "**Full Changelog**: https://github.com/xdm67x/electrotest/releases/tag/$TAG"
+  fi
+  echo
+} > "$SECTION_FILE"
+
+# Insert the new section before the first existing version heading;
+# create the file with its header if this is the very first changelog.
+if [ ! -f CHANGELOG.md ]; then
+  printf '# Changelog\n\nAll notable changes to this project will be documented in this file.\n\n' > CHANGELOG.md
+fi
+INSERT_AT="$(grep -n -m1 '^## ' CHANGELOG.md | cut -d: -f1 || true)"
+if [ -n "$INSERT_AT" ]; then
+  TMP_CHANGELOG="$(mktemp)"
+  head -n $((INSERT_AT - 1)) CHANGELOG.md > "$TMP_CHANGELOG"
+  cat "$SECTION_FILE" >> "$TMP_CHANGELOG"
+  tail -n +"$INSERT_AT" CHANGELOG.md >> "$TMP_CHANGELOG"
+  mv "$TMP_CHANGELOG" CHANGELOG.md
+else
+  cat "$SECTION_FILE" >> CHANGELOG.md
+fi
+
+git add Cargo.toml Cargo.lock CHANGELOG.md
 git commit -m "chore: bump version to $VERSION"
 git tag -a "$TAG" -m "Release $TAG"
 
