@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "main.js",
+  "type": "module",
   "scripts": {
     "start": "electron .",
     "start:debug": "electron . --remote-debugging-port=9222"
@@ -11,7 +12,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^41.0.3",
-    "oxfmt": "^0.41.0"
+    "electron": "^44.0.0",
+    "oxfmt": "^0.71.0"
   }
 }

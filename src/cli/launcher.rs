@@ -308,21 +308,24 @@ mod tests {
         let port = AppLauncher::find_available_port(29999).await;
         assert!(port.is_ok());
         let port = port.unwrap();
-        assert!(port >= 29999 && port < 29999 + MAX_PORT_ATTEMPTS);
+        assert!((29999..29999 + MAX_PORT_ATTEMPTS).contains(&port));
     }
 
     #[test]
     fn test_detect_electron_path() {
-        // Test with the example electron-app which has node_modules
+        // Test with the example electron-app when node_modules is installed;
+        // skip silently on fresh clones where dependencies are not installed yet
         let example_path = Path::new("examples/electron-app");
-        if example_path.exists() {
-            let detected = detect_electron_path(example_path);
-            assert!(
-                detected.is_some(),
-                "Should detect electron in examples/electron-app"
-            );
-            let path = detected.unwrap();
-            assert!(path.to_string_lossy().contains("node_modules"));
+        if !example_path.join("node_modules").exists() {
+            eprintln!("Skipping: node_modules not installed in examples/electron-app");
+            return;
         }
+        let detected = detect_electron_path(example_path);
+        assert!(
+            detected.is_some(),
+            "Should detect electron in examples/electron-app"
+        );
+        let path = detected.unwrap();
+        assert!(path.to_string_lossy().contains("node_modules"));
     }
 }
